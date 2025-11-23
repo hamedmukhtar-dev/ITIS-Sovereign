@@ -23,7 +23,6 @@ st.markdown("""
     h1, h2, h3 { color: #D4AF37 !important; font-family: 'Segoe UI', sans-serif; }
     p, li, span { color: #E0E0E0; font-size: 16px; }
     
-    /* كروت العدادات */
     div[data-testid="metric-container"] {
         background: linear-gradient(180deg, #111 0%, #1a1a1a 100%);
         border: 1px solid #D4AF37;
@@ -33,10 +32,9 @@ st.markdown("""
     div[data-testid="stMetricValue"] { color: #D4AF37 !important; }
     div[data-testid="stMetricLabel"] { color: #FFF !important; font-weight: bold; }
     
-    /* التبويبات */
     .stTabs [data-baseweb="tab-list"] { gap: 8px; }
     .stTabs [data-baseweb="tab"] { background-color: #1a1a1a; color: #888; border: 1px solid #333; }
-    .stTabs [aria-selected="true"] { background-color: #D4AF37 !important; color: black !important; font-weight: bold; }
+    .stTabs [aria-selected="true"] { background-color: #D4AF37 !important; color: black !important; font-weight: bold; border: 1px solid #D4AF37; }
     
     .stButton>button { border: 1px solid #D4AF37; color: #D4AF37; background-color: black; width: 100%; }
 </style>
@@ -46,6 +44,7 @@ st.markdown("""
 # 3. القائمة الجانبية
 # ---------------------------------------------------------
 with st.sidebar:
+    st.image("https://cdn-icons-png.flaticon.com/512/9326/9326394.png", width=100)
     st.title("🦅 ITIS CORE")
     st.caption("Global Sovereign Economy")
     st.markdown("---")
@@ -54,7 +53,7 @@ with st.sidebar:
     st.success("🛡️ **Compliance:** Amex GBT / OFAC")
     st.markdown("---")
     st.write("Commander: **Hamed Mukhtar**")
-    st.write("Version: **6.0 (Final Master)**")
+    st.write("Version: **6.0 (Color-Coded Master)**")
 
 # ---------------------------------------------------------
 # 4. الرأس
@@ -120,7 +119,7 @@ with tab2:
     fig_globe.update_layout(geo=dict(showland=True, landcolor="#111", bgcolor="black"), height=500, margin={"r":0,"t":0,"l":0,"b":0}, paper_bgcolor="black")
     st.plotly_chart(fig_globe, use_container_width=True)
 
-# === TAB 3: المخطط الهندسي المتكامل (الملون) ===
+# === TAB 3: المخطط الهندسي المتكامل (الملون بالألوان الصحيحة) ===
 with tab3:
     st.header("3. The Master Process Flow (دورة العمليات)")
     st.markdown("### من الطلب إلى التذكرة: رحلة عبر الفضاء والذهب")
@@ -152,7 +151,7 @@ with tab3:
     flow.edge('Airline', 'User', label=' تذكرة (e-Ticket)', style='dashed', color='#00FFFF')
 
     st.graphviz_chart(flow, use_container_width=True)
-    st.info("ℹ️ **مسار العملية:** العميل (أزرق) -> الفضاء (أسود) -> الدماغ (بنفسجي) -> الأمان (أخضر) -> الذهب (ذهبي) -> الطيران (أحمر).")
+    st.info("ℹ️ **دليل الألوان:** 👤 العميل (سماوي) -> 🛰️ الفضاء (أسود) -> 🧠 الذكاء (بنفسجي) -> 🛡️ الأمان (أخضر) -> 🏦 الذهب (ذهبي) -> ✈️ الطيران (أحمر).")
 
 # === TAB 4: نموذج العملة ===
 with tab4:
