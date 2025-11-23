@@ -2,190 +2,206 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
-import plotly.express as px
+import pydeck as pdk
 import graphviz
 
 # ---------------------------------------------------------
-# 1. إعدادات النظام (System Config)
+# 1. إعدادات الصفحة (وضع ملء الشاشة)
 # ---------------------------------------------------------
 st.set_page_config(
-    page_title="ITIS | Sovereign Economy",
+    page_title="ITIS | Sovereign Command",
     page_icon="🦅",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
 # ---------------------------------------------------------
-# 2. تصميم "الهيبة التكنولوجية" (Dark Space & Gold Theme)
+# 2. تصميم "السايبربنك المالي" (Cyber-Finance Theme)
 # ---------------------------------------------------------
 st.markdown("""
 <style>
-    /* خلفية سوداء */
-    .stApp { background-color: #000000; color: white; }
-    
-    /* نصوص ذهبية */
-    h1, h2, h3 { color: #FFD700 !important; font-family: 'Helvetica Neue', sans-serif; }
-    
-    /* تصميم العدادات */
-    div[data-testid="metric-container"] {
-        background: linear-gradient(145deg, #1e1e1e, #2a2a2a);
-        border: 1px solid #FFD700;
-        padding: 15px;
-        border-radius: 10px;
-        box-shadow: 0 4px 15px rgba(255, 215, 0, 0.2);
+    /* الخلفية العامة */
+    .stApp {
+        background-color: #050505;
+        background-image: radial-gradient(#111 1px, transparent 1px);
+        background-size: 20px 20px;
+        color: #e0e0e0;
     }
-    div[data-testid="stMetricValue"] { color: #FFD700 !important; }
     
-    /* تصميم التبويبات (Tabs) */
-    .stTabs [data-baseweb="tab-list"] { gap: 10px; }
-    .stTabs [data-baseweb="tab"] { background-color: #1E1E1E; border-radius: 5px; color: white; border: 1px solid #333; }
-    .stTabs [aria-selected="true"] { background-color: #FFD700 !important; color: black !important; font-weight: bold; }
+    /* العناوين */
+    h1, h2, h3 {
+        font-family: 'Rajdhani', sans-serif;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+    }
+    h1 { 
+        background: -webkit-linear-gradient(#FFD700, #BF953F);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 800;
+    }
+
+    /* البطاقات الزجاجية (Glassmorphism) */
+    div[data-testid="metric-container"] {
+        background: rgba(25, 25, 25, 0.7);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 215, 0, 0.3);
+        border-radius: 12px;
+        padding: 20px;
+        transition: transform 0.3s ease;
+    }
+    div[data-testid="metric-container"]:hover {
+        transform: translateY(-5px);
+        border-color: #FFD700;
+        box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
+    }
+    
+    /* النصوص الملونة */
+    .gold-text { color: #FFD700; font-weight: bold; }
+    .neon-text { color: #00FFFF; font-weight: bold; text-shadow: 0 0 5px #00FFFF; }
 </style>
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 3. الشريط الجانبي (Status Bar)
+# 3. الهيدر (The Header)
 # ---------------------------------------------------------
-with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/9326/9326394.png", width=100)
-    st.title("🦅 ITIS CONTROL")
-    st.markdown("---")
-    st.success("🛰️ Uplink: **Starlink V2 (Stable)**")
-    st.info("🏦 Vault: **QNB Doha (Secure)**")
-    st.warning("🛡️ Compliance: **Amex GBT (Active)**")
-    st.markdown("---")
-    st.write("Commander: **Hamed Mukhtar**")
+c1, c2 = st.columns([1, 6])
+with c1:
+    st.markdown("## 🦅")
+with c2:
+    st.title("ITIS: THE AFRICA PROTOCOL")
+    st.markdown("""
+    <div style='display: flex; gap: 20px; font-family: monospace;'>
+        <span class='gold-text'>● STATUS: OPERATIONAL</span>
+        <span class='neon-text'>● NETWORK: STARLINK LEO V2</span>
+        <span class='gold-text'>● TREASURY: QNB SECURED</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+st.markdown("---")
 
 # ---------------------------------------------------------
-# 4. الرأس (Header)
+# 4. العدادات الحية (Live Metrics)
 # ---------------------------------------------------------
-col_logo, col_title = st.columns([1, 5])
-with col_title:
-    st.title("ITIS: The Africa Protocol")
-    st.markdown("#### The World's First Sovereign Economy Run on Space Infrastructure")
-    st.markdown("`Status: OPERATIONAL` | `Network: STARLINK-NATIVE` | `Currency: GOLD-BACKED`")
-
-st.divider()
+m1, m2, m3, m4 = st.columns(4)
+m1.metric("🥇 Gold Assets (Vault)", "1,452.50 kg", "+2.1% Today")
+m2.metric("💎 AI-GD Token Price", "$ 68.82", "Pegged 1:1 Gold")
+m3.metric("🛰️ Active Nodes (Starlink)", "10,420", "Online")
+m4.metric("✈️ Cleared Debt (IATA)", "$ 12.4M", "Liquidated")
 
 # ---------------------------------------------------------
-# 5. الأقسام الرئيسية (The Master Tabs)
+# 5. الكرة الأرضية التفاعلية (3D Space Map)
 # ---------------------------------------------------------
-tab1, tab2, tab3, tab4 = st.tabs(["📊 Command Center", "🏗️ System Blueprint", "💰 Financial Engine", "🤝 Strategic Alliance"])
+st.markdown("### 🛰️ LIVE ORBITAL CONNECTIVITY (اتصال الفضاء)")
 
-# === TAB 1: غرفة القيادة (الأرقام الحية) ===
-with tab1:
-    st.subheader("Live Sovereign Operations (العمليات الحية)")
+# بيانات المحاكاة (الخرطوم، الدوحة، نيويورك، لندن)
+layers = [
+    pdk.Layer(
+        "ArcLayer",
+        data=[
+            {"source": [32.5599, 15.5007], "target": [51.5194, 25.2854], "color": [255, 215, 0]}, # خرطوم -> الدوحة (الذهب)
+            {"source": [32.5599, 15.5007], "target": [-74.0060, 40.7128], "color": [0, 255, 255]}, # خرطوم -> نيويورك (Amex)
+            {"source": [32.5599, 15.5007], "target": [-0.1278, 51.5074], "color": [255, 0, 255]}, # خرطوم -> لندن (IATA)
+        ],
+        get_source_position="source",
+        get_target_position="target",
+        get_source_color=[0, 255, 255, 160],
+        get_target_color="color",
+        get_width=4,
+        get_height=0.5,
+    ),
+    pdk.Layer(
+        "ScatterplotLayer",
+        data=[
+            {"pos": [32.5599, 15.5007], "name": "Khartoum (HQ)"},
+            {"pos": [51.5194, 25.2854], "name": "Doha (Vault)"},
+            {"pos": [-74.0060, 40.7128], "name": "New York (Amex)"},
+        ],
+        get_position="pos",
+        get_color=[255, 215, 0],
+        get_radius=100000,
+    ),
+]
+
+view_state = pdk.ViewState(latitude=20, longitude=30, zoom=1.5, pitch=45)
+
+st.pydeck_chart(pdk.Deck(
+    map_style="mapbox://styles/mapbox/dark-v10",
+    initial_view_state=view_state,
+    layers=layers,
+    tooltip={"text": "{name}"}
+))
+
+# ---------------------------------------------------------
+# 6. المخططات التفصيلية (Tabs)
+# ---------------------------------------------------------
+tab_arch, tab_finance, tab_partners = st.tabs(["🏗️ System Architecture", "💰 Financial Engine", "🤝 Alliance"])
+
+with tab_arch:
+    st.subheader("The Sovereign Blueprint (مخطط النظام)")
     
-    # صف العدادات
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("🥇 Gold Reserve (QNB)", "1,450 kg", "+12 kg (24h)")
-    c2.metric("💎 AI-GD Price", "$ 68.45", "Stable (1g Gold)")
-    c3.metric("✈️ IATA Debt Cleared", "$ 4.2M", "+$500k Today")
-    c4.metric("🛰️ Active Terminals", "10,240", "Starlink Nodes")
+    # مخطط Graphviz
+    sys = graphviz.Digraph()
+    sys.attr(rankdir='LR', bgcolor='transparent')
+    sys.attr('node', shape='rect', style='rounded,filled', fillcolor='#1a1a1a', fontcolor='white', penwidth='2', color='#FFD700')
+    sys.attr('edge', color='#00FFFF', penwidth='1.5', arrowsize='0.8')
 
-    st.markdown("---")
-    
-    # خريطة العمليات والذكاء الاصطناعي
-    col_map, col_ai = st.columns([2, 1])
-    
-    with col_map:
-        st.markdown("##### 🌍 Real-Time Settlement Map (Ledger)")
-        map_data = pd.DataFrame({
-            'lat': [15.5007, 25.276987, 24.7136, 30.0444],
-            'lon': [32.5599, 55.296249, 46.6753, 31.2357],
-            'Volume': [1000, 5000, 3000, 2000]
+    # العقد
+    sys.node('U', 'User / Agent\n(Starlink Terminal)', color='#00FFFF')
+    sys.node('S', 'Orbit Satellites\n(SpaceX LEO)', shape='ellipse', color='#00FFFF')
+    sys.node('C', 'ITIS CORE\n(xAI Brain)', fillcolor='#333')
+    sys.node('V', 'QNB VAULT\n(Physical Gold)', color='#FFD700')
+    sys.node('M', 'Minting Engine\n(AI-GD Token)', color='#FFD700')
+    sys.node('G', 'Global Payment\n(Amex/IATA)')
+
+    # المسار
+    sys.edge('U', 'S', ' Encrypted Signal')
+    sys.edge('S', 'C', ' Data Stream')
+    sys.edge('C', 'V', ' Audit Gold')
+    sys.edge('V', 'M', ' Issue Token')
+    sys.edge('M', 'G', ' Settlement')
+    sys.edge('G', 'U', ' Ticket Confirmed')
+
+    st.graphviz_chart(sys)
+
+with tab_finance:
+    c_f1, c_f2 = st.columns(2)
+    with c_f1:
+        st.markdown("##### 💹 Liquidity Recovery Model")
+        # مخطط مساحي
+        chart_data = pd.DataFrame({
+            'Month': pd.date_range(start='1/1/2025', periods=12),
+            'Debt Recovered': np.cumsum(np.random.randn(12) + 10),
+            'Gold Reserve': np.cumsum(np.random.randn(12) + 12)
         })
-        st.map(map_data, zoom=3, color='#FFD700')
-    
-    with col_ai:
-        st.markdown("##### 🧠 OpenAI Sentinel (Security)")
-        st.success("✅ FRAUD CHECK: PASSED")
-        st.info("ℹ️ LIQUIDITY: OPTIMAL")
-        st.warning("⚠️ ALERT: High demand detected in Port Sudan. Auto-scaling Starlink bandwidth.")
+        st.area_chart(chart_data.set_index('Month'))
+        
+    with c_f2:
+        st.markdown("##### 🧠 AI Fraud Detection Rate")
+        # عداد دائري
+        fig = go.Figure(go.Indicator(
+            mode = "gauge+number",
+            value = 99.9,
+            title = {'text': "Safety Score %"},
+            gauge = {'axis': {'range': [None, 100]}, 'bar': {'color': "#00FFFF"}}
+        ))
+        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", font_color="white", height=300)
+        st.plotly_chart(fig, use_container_width=True)
 
-# === TAB 2: المخطط الهندسي (كيف يعمل النظام) ===
-with tab2:
-    st.subheader("The Sovereign Architecture (بنية النظام السيادية)")
-    st.markdown("كيف نربط الفضاء بالأرض لحل أزمة السيولة:")
-    
-    # رسم المخطط المعقد باستخدام Graphviz
-    arch = graphviz.Digraph()
-    arch.attr(rankdir='LR', bgcolor='#0E1117')
-    arch.attr('node', shape='box', style='filled', fillcolor='#1E1E1E', fontcolor='white', color='#FFD700')
-    arch.attr('edge', color='white')
+with tab_partners:
+    st.success("✅ **Strategic Partners Active & Integrated**")
+    cols = st.columns(3)
+    cols[0].info("🛰️ **STARLINK:** 100% Uptime")
+    cols[1].warning("🏦 **QNB GROUP:** Custody Active")
+    cols[2].error("🛡️ **AMEX GBT:** Compliance On")
 
-    arch.node('USER', 'Diaspora User 📱\n(Starlink App)')
-    arch.node('SAT', 'Starlink Satellites 🛰️\n(Zero-Infrastructure)')
-    arch.node('CORE', 'ITIS AI Core 🦅\n(Logic & Ledger)')
-    arch.node('AMEX', 'Amex Gateway 🛡️\n(OFAC/KYC)')
-    arch.node('QNB', 'QNB Vault 🏦\n(Gold Assets)')
-    arch.node('IATA', 'Airlines/IATA ✈️\n(Settlement)')
-
-    arch.edge('USER', 'SAT', ' Encrypted Request')
-    arch.edge('SAT', 'CORE', ' LEO Uplink')
-    arch.edge('CORE', 'AMEX', ' Compliance Check')
-    arch.edge('AMEX', 'QNB', ' Lock Gold')
-    arch.edge('QNB', 'IATA', ' Release AI-GD')
-    arch.edge('IATA', 'USER', ' Ticket Issued')
-
-    st.graphviz_chart(arch)
-
-# === TAB 3: المحرك المالي (الأرباح وتدفق الكاش) ===
-with tab3:
-    st.subheader("Financial Projection & Cash Flow (نموذج الربحية)")
-    
-    col_fin1, col_fin2 = st.columns(2)
-    
-    with col_fin1:
-        st.markdown("##### 📈 Revenue Growth (Hockey Stick)")
-        # بيانات وهمية للنمو
-        growth_data = pd.DataFrame({
-            "Year": ["2025", "2026", "2027", "2028"],
-            "Revenue ($M)": [15, 120, 450, 1200],
-            "Gold Assets (Tons)": [1.5, 5, 12, 25]
-        })
-        fig_growth = px.bar(growth_data, x="Year", y=["Revenue ($M)", "Gold Assets (Tons)"], barmode='group', color_discrete_sequence=['#FFD700', '#00FFFF'])
-        fig_growth.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="white")
-        st.plotly_chart(fig_growth, use_container_width=True)
-
-    with col_fin2:
-        st.markdown("##### 🔄 Debt-to-Asset Swap Model")
-        st.write("كيف نحول ديون الطيران المعدومة إلى ذهب:")
-        # مخطط دائري
-        pie_data = pd.DataFrame({
-            "Stage": ["Blocked Funds (Debt)", "Gold Mining Sourcing", "AI-GD Issuance", "Airline Settlement"],
-            "Value": [100, 30, 80, 100]
-        })
-        fig_pie = px.pie(pie_data, values='Value', names='Stage', color_discrete_sequence=px.colors.sequential.RdBu)
-        fig_pie.update_layout(paper_bgcolor="rgba(0,0,0,0)", font_color="white")
-        st.plotly_chart(fig_pie, use_container_width=True)
-
-# === TAB 4: التحالف الاستراتيجي ===
-with tab4:
-    st.subheader("The Strategic Alliance (شركاء النجاح)")
-    
-    col_p1, col_p2, col_p3 = st.columns(3)
-    
-    with col_p1:
-        st.markdown("### 🛰️ Starlink / X")
-        st.caption("Infrastructure Partner")
-        st.write("- 100% Space Connectivity")
-        st.write("- X-Payments Integration")
-        st.success("Target: 10k Terminals")
-    
-    with col_p2:
-        st.markdown("### 🏦 QNB Group")
-        st.caption("Treasury & Custody")
-        st.write("- Physical Gold Storage")
-        st.write("- Fiat Gateway (QAR/USD)")
-        st.info("Role: The Bank")
-    
-    with col_p3:
-        st.markdown("### 🛡️ Amex GBT")
-        st.caption("Compliance & Network")
-        st.write("- OFAC/KYC Shield")
-        st.write("- Corporate Travel Flow")
-        st.warning("Role: The Gatekeeper")
-
-st.divider()
-st.caption("CONFIDENTIAL: PROPERTY OF DAR AL KHARTOUM - EST. 1995")
+# ---------------------------------------------------------
+# التذييل
+# ---------------------------------------------------------
+st.markdown("---")
+st.markdown("""
+<div style='text-align: center; color: #666;'>
+    <small>CONFIDENTIAL SYSTEM | PROPERTY OF DAR AL KHARTOUM | EST. 1995</small><br>
+    <small>POWERED BY xAI & STARLINK INFRASTRUCTURE</small>
+</div>
+""", unsafe_allow_html=True)
