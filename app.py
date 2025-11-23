@@ -5,267 +5,223 @@ import plotly.graph_objects as go
 import graphviz
 
 # ---------------------------------------------------------
-# 1. إعدادات النظام (System Config)
+# 1. إعدادات النظام
 # ---------------------------------------------------------
 st.set_page_config(
-    page_title="ITIS | Sovereign Economy",
+    page_title="ITIS | Global Sovereign System",
     page_icon="🦅",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 # ---------------------------------------------------------
-# 2. تصميم "الهيبة الملكية" (Royal Dark & Gold Theme)
+# 2. تصميم الهيبة الملكية (Royal Dark & Gold)
 # ---------------------------------------------------------
 st.markdown("""
 <style>
-    /* الخلفية */
     .stApp { background-color: #000000; }
-    
-    /* النصوص */
     h1, h2, h3 { color: #D4AF37 !important; font-family: 'Helvetica Neue', sans-serif; }
     p, li, span { color: #E0E0E0; font-size: 16px; }
     
-    /* الصناديق والعدادات */
     div[data-testid="metric-container"] {
         background: linear-gradient(180deg, #111 0%, #1a1a1a 100%);
         border: 1px solid #D4AF37;
         padding: 15px;
         border-radius: 8px;
     }
-    div[data-testid="stMetricValue"] { color: #D4AF37 !important; text-shadow: 0px 0px 10px rgba(212, 175, 55, 0.3); }
+    div[data-testid="stMetricValue"] { color: #D4AF37 !important; }
     div[data-testid="stMetricLabel"] { color: #FFF !important; font-weight: bold; }
     
-    /* التبويبات (Tabs) */
     .stTabs [data-baseweb="tab-list"] { gap: 8px; }
     .stTabs [data-baseweb="tab"] { background-color: #111; border: 1px solid #333; color: white; }
     .stTabs [aria-selected="true"] { background-color: #D4AF37 !important; color: black !important; font-weight: bold; border: 1px solid #D4AF37; }
     
-    /* الأزرار */
     .stButton>button {
         border: 1px solid #D4AF37;
         color: #D4AF37;
         background-color: black;
-        border-radius: 5px;
         width: 100%;
     }
 </style>
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 3. القائمة الجانبية (الهوية)
+# 3. القائمة الجانبية
 # ---------------------------------------------------------
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/9326/9326394.png", width=100)
     st.title("🦅 ITIS CONTROL")
-    st.caption("The Sovereign Travel Economy")
+    st.caption("Global Sovereign Economy")
     st.markdown("---")
-    st.info("📡 **Connectivity:** Starlink (SpaceX)")
-    st.warning("🏦 **Treasury:** QNB Group (Qatar)")
+    st.info("📡 **Connectivity:** Starlink Global")
+    st.warning("🏦 **Treasury:** QNB Group")
     st.success("🛡️ **Compliance:** Amex GBT / OFAC")
     st.markdown("---")
     st.write("Commander: **Hamed Mukhtar**")
-    st.write("Version: **3.0 (Master Class)**")
+    st.write("Version: **5.1 (Visual Edition)**")
 
 # ---------------------------------------------------------
-# 4. الرأس (The Header)
+# 4. الرأس
 # ---------------------------------------------------------
 c1, c2 = st.columns([1, 5])
 with c2:
-    st.title("ITIS: THE AFRICA PROTOCOL")
-    st.markdown("### 🌍 First Sovereign Economy Run on Space Infrastructure")
-    st.markdown("**Status:** `LIVE PROTOTYPE` | **Ledger:** `IMMUTABLE` | **Asset:** `GOLD (RWA)`")
+    st.title("ITIS: THE GLOBAL SOVEREIGN PROTOCOL")
+    st.markdown("### 🌍 The First Cloud-Nation Economy Run on Space Infrastructure")
+    st.markdown("**Status:** `LIVE GLOBALLY` | **Asset:** `GOLD (RWA)` | **Scope:** `UNLIMITED`")
 st.divider()
 
 # ---------------------------------------------------------
-# 5. الأقسام الرئيسية (5 Tabs كاملة)
+# 5. الأقسام الرئيسية
 # ---------------------------------------------------------
 tab_vision, tab_ops, tab_arch, tab_token, tab_partners = st.tabs([
-    "📜 VISION & STRATEGY", 
+    "📜 GLOBAL VISION", 
     "🚀 LIVE OPERATIONS", 
     "🏗️ SYSTEM ARCHITECTURE", 
     "💎 AI-GD MODEL", 
     "🤝 STRATEGIC ALLIANCE"
 ])
 
-# =========================================================
-# TAB 1: الرؤية والنبذة (Vision) - النص الاحترافي
-# =========================================================
+# === TAB 1: الرؤية العالمية (مع الرسم الجديد!) ===
 with tab_vision:
-    st.header("1. Executive Summary (الملخص التنفيذي)")
-    col_text, col_kpi = st.columns([2, 1])
+    st.header("1. Strategic Vision: The Cloud Nation Ecosystem")
     
-    with col_text:
+    col_v1, col_v2 = st.columns([1, 1])
+    
+    with col_v1:
         st.markdown("""
-        **ITIS (Integrated Travel Intelligence System)** is a sovereign financial infrastructure designed to replace broken legacy banking in conflict zones (Sudan Pilot).
-        
-        **The Problem (المشكلة):**
-        * 🔴 **Blocked Funds:** Millions of IATA/Airline dollars trapped in local currency.
-        * 🔴 **Broken Infra:** Ground internet/banking fails during crises.
-        * 🔴 **Compliance Risk:** Cash-heavy economy isolates the market.
+        ### **Who We Are:**
+        **ITIS** is the **Alternative Digital Central Bank** for the global travel industry. We bridge the gap where legacy infrastructure ends and the sovereign digital future begins.
 
-        **The Solution (الحل السيادي):**
-        * ✅ **Space-Native:** 100% Reliance on **Starlink** (No ground cables).
-        * ✅ **Gold-Standard:** Converting debt to **Gold Assets** held at **QNB**.
-        * ✅ **Digital Settlement:** Issuing **AI-GD** (Gold-Backed Token) for instant payments.
+        ### **The Scope (Target Audience):**
+        We utilize Starlink to serve the **'Cloud Nation'**:
+        1.  🌍 **The Diaspora:** 10M+ Sudanese & Global Citizens.
+        2.  🏢 **Corporate Giants (Amex GBT):** MNCS, UN, NGOs requiring OFAC compliance.
+        3.  ✈️ **Global Travelers:** Seamless settlement for airline customers worldwide.
         """)
         
-    with col_kpi:
-        st.markdown("### 🎯 Targets")
-        st.metric("Market Size", "10 Million Users", "Diaspora")
-        st.metric("Debt to Clear", "$ 450 Million", "IATA Funds")
-        st.metric("Infrastructure", "Zero Capex", "Space-Based")
+        st.info("ℹ️ **Mission:** Re-engineering the global economy by converting distressed assets into Gold Standards.")
 
-# =========================================================
-# TAB 2: غرفة القيادة (Live Ops) + الكرة الأرضية 3D
-# =========================================================
+    with col_v2:
+        st.markdown("### 🌐 The Ecosystem Map (نطاق العمل)")
+        
+        # --- الرسم الجديد: يوضح نطاق الأمة السحابية ---
+        scope = graphviz.Digraph()
+        scope.attr(rankdir='TB', bgcolor='black')
+        scope.attr('node', shape='rect', style='rounded,filled', fillcolor='#222', fontcolor='white', color='#D4AF37')
+        scope.attr('edge', color='white')
+
+        # القلب
+        scope.node('CORE', '🦅 ITIS PROTOCOL\n(The Sovereign Hub)', fontsize='14', fillcolor='#D4AF37', fontcolor='black')
+
+        # الأطراف الثلاثة
+        scope.node('DIASPORA', '🌍 DIASPORA (B2C)\n(10M Users)', color='#00FFFF', fontcolor='#00FFFF')
+        scope.node('CORP', '🏢 AMEX GBT (B2B)\n(UN / NGOs / MNCs)', color='#00FF00', fontcolor='#00FF00')
+        scope.node('PAX', '✈️ GLOBAL TRAVELERS\n(Airlines)', color='#FF00FF', fontcolor='#FF00FF')
+
+        # الاتصال
+        scope.edge('DIASPORA', 'CORE', ' Remittance & Booking')
+        scope.edge('CORP', 'CORE', ' Corporate Travel')
+        scope.edge('PAX', 'CORE', ' Global Settlement')
+        
+        st.graphviz_chart(scope)
+
+# === TAB 2: غرفة القيادة (Live Ops) ===
 with tab_ops:
-    st.header("2. Sovereign Command Center (العمليات الحية)")
+    st.header("2. Sovereign Command Center")
     
-    # صف العدادات
     m1, m2, m3, m4 = st.columns(4)
-    m1.metric("🥇 Gold Reserve (QNB Vault)", "1,452.5 kg", "+2.1% Today")
-    m2.metric("💎 AI-GD Token Price", "$ 68.82", "Pegged 1g Gold")
+    m1.metric("🥇 Gold Reserve (QNB)", "1,452.5 kg", "+2.1%")
+    m2.metric("💎 AI-GD Token", "$ 68.82", "Pegged 1g Gold")
     m3.metric("✈️ IATA Debt Cleared", "$ 12.4M", "Liquidated")
-    m4.metric("📡 Active Starlink Nodes", "10,420", "Online")
+    m4.metric("📡 Active Nodes", "10,420", "Global Online")
 
     st.markdown("---")
-    
-    # الكرة الأرضية (3D Globe) - Plotly
     st.subheader("🌍 Global Settlement Layer (Starlink Network)")
     
-    fig_globe = go.Figure()
-    
-    # الخطوط الذهبية (مسارات المال)
-    fig_globe.add_trace(go.Scattergeo(
-        lon = [32.55, 51.51, 32.55, -74.00, 32.55, -0.12],
-        lat = [15.50, 25.28, 15.50, 40.71, 15.50, 51.50],
-        mode = 'lines',
-        line = dict(width = 2, color = '#D4AF37'),
-        name = 'Gold/Data Flow'
+    fig_globe = go.Figure(go.Scattergeo(
+        lon = [32.55, 51.51, -74.00, -0.12, 55.27, 139.69],
+        lat = [15.50, 25.28, 40.71, 51.50, 25.20, 35.67],
+        text = ['KHARTOUM', 'DOHA', 'NEW YORK', 'LONDON', 'DUBAI', 'TOKYO'],
+        mode = 'markers+lines',
+        line = dict(width=2, color='#D4AF37'),
+        marker = dict(size=10, color='#00FFFF')
     ))
-    
-    # النقاط (المراكز)
-    fig_globe.add_trace(go.Scattergeo(
-        lon = [32.55, 51.51, -74.00, -0.12],
-        lat = [15.50, 25.28, 40.71, 51.50],
-        text = ['KHARTOUM (HQ)', 'DOHA (QNB VAULT)', 'NEW YORK (AMEX)', 'LONDON (IATA)'],
-        mode = 'markers+text',
-        marker = dict(size = 15, color = '#00FFFF', line=dict(width=2, color='white')),
-        textposition="top center",
-        textfont=dict(color="white", size=14),
-        name = 'Sovereign Nodes'
-    ))
-
     fig_globe.update_layout(
         geo = dict(
-            projection_type = "orthographic",
-            showland = True, landcolor = "#111",
-            showocean = True, oceancolor = "#000",
-            showcountries = True, countrycolor = "#333",
-            bgcolor = "black"
+            showland=True, landcolor="#111", showocean=True, oceancolor="#000",
+            projection_type="orthographic", bgcolor="black"
         ),
-        height=600, margin={"r":0,"t":0,"l":0,"b":0}, paper_bgcolor="black"
+        height=500, margin={"r":0,"t":0,"l":0,"b":0}, paper_bgcolor="black", font_color="white"
     )
     st.plotly_chart(fig_globe, use_container_width=True)
 
-# =========================================================
-# TAB 3: المخطط الهندسي (Architecture) - الرسمة رقم 1
-# =========================================================
+# === TAB 3: المخطط الهندسي (Architecture) ===
 with tab_arch:
-    st.header("3. System Architecture (المخطط الهندسي)")
-    st.write("كيف يربط النظام الفضاء بالأرض لحل أزمة السيولة:")
+    st.header("3. System Architecture (The Global Bridge)")
     
     sys = graphviz.Digraph()
     sys.attr(rankdir='LR', bgcolor='black')
-    sys.attr('node', shape='rect', style='filled', fillcolor='#222', fontcolor='white', color='#D4AF37', fontname='Helvetica')
+    sys.attr('node', shape='rect', style='filled', fillcolor='#222', fontcolor='white', color='#D4AF37')
     sys.attr('edge', color='white')
 
-    # العقد
-    sys.node('USER', '📱 Diaspora User\n(Starlink App)')
+    sys.node('USER', '📱 Global User\n(Cloud Nation)')
     sys.node('SAT', '🛰️ Starlink LEO\n(Space Layer)')
     sys.node('CORE', '🦅 ITIS AI Core\n(Logic & Ledger)')
-    sys.node('AMEX', '🛡️ Amex Gateway\n(Compliance)')
+    sys.node('AMEX', '🛡️ Amex Gateway\n(Global Compliance)')
     sys.node('QNB', '🏦 QNB Vault\n(Gold Assets)')
-    sys.node('IATA', '✈️ IATA / Airlines\n(Settlement)')
+    sys.node('IATA', '✈️ Airlines\n(Worldwide)')
 
-    # المسار
-    sys.edge('USER', 'SAT', ' 1. Request')
-    sys.edge('SAT', 'CORE', ' 2. Uplink')
-    sys.edge('CORE', 'AMEX', ' 3. KYC/OFAC')
-    sys.edge('AMEX', 'QNB', ' 4. Gold Lock')
-    sys.edge('QNB', 'IATA', ' 5. Pay AI-GD')
-    sys.edge('IATA', 'USER', ' 6. Ticket')
+    sys.edge('USER', 'SAT', ' Request')
+    sys.edge('SAT', 'CORE', ' Data')
+    sys.edge('CORE', 'AMEX', ' KYC/OFAC')
+    sys.edge('AMEX', 'QNB', ' Gold Lock')
+    sys.edge('QNB', 'IATA', ' Pay AI-GD')
+    sys.edge('IATA', 'USER', ' Ticket')
 
     st.graphviz_chart(sys)
 
-# =========================================================
-# TAB 4: نموذج العملة (AI-GD Model) - الرسمة رقم 2
-# =========================================================
+# === TAB 4: نموذج العملة (AI-GD) ===
 with tab_token:
-    st.header("4. AI-GD: Liquidity Mining Model")
-    st.write("دورة تسييل الديون إلى ذهب (Debt-to-Asset Swap):")
-    
-    c_t1, c_t2 = st.columns([3, 2])
+    st.header("4. AI-GD: The Gold Standard 2.0")
+    c_t1, c_t2 = st.columns([2, 1])
     
     with c_t1:
         money = graphviz.Digraph()
         money.attr(rankdir='TB', bgcolor='black')
-        money.attr('node', shape='box', style='rounded,filled', fillcolor='#111', fontcolor='white', color='#00FFFF')
-        money.attr('edge', color='#00FFFF')
+        money.attr('node', shape='ellipse', style='filled', fillcolor='#111', fontcolor='#00FFFF', color='#00FFFF')
+        money.attr('edge', color='white')
 
-        money.node('DEBT', '❌ Blocked Funds (SDG)', color='red')
-        money.node('MINING', '⛏️ Gold Sourcing (Local)')
-        money.node('VAULT', '🔒 QNB Vault (Assets)', color='gold', fontcolor='gold')
-        money.node('TOKEN', '💎 AI-GD Token (Digital)', color='gold')
-        money.node('SETTLE', '✅ IATA Settlement (USD)', color='green')
+        money.node('DEBT', '❌ Distressed Assets', color='red')
+        money.node('GOLD', '🥇 Physical Gold (QNB)', color='gold')
+        money.node('TOKEN', '💎 AI-GD Digital Token', color='gold')
+        money.node('PAY', '✅ Global Settlement', color='green')
 
-        money.edge('DEBT', 'MINING', ' Financing')
-        money.edge('MINING', 'VAULT', ' Physical Supply')
-        money.edge('VAULT', 'TOKEN', ' Minting')
-        money.edge('TOKEN', 'SETTLE', ' Payment')
+        money.edge('DEBT', 'GOLD', ' Swap')
+        money.edge('GOLD', 'TOKEN', ' Minting')
+        money.edge('TOKEN', 'PAY', ' Payment')
 
         st.graphviz_chart(money)
-        
+    
     with c_t2:
-        st.info("ℹ️ **Mechanism:**")
-        st.write("1. QNB uses blocked funds to buy local gold.")
-        st.write("2. Gold is stored as a sovereign asset.")
-        st.write("3. AI-GD tokens are issued against this gold.")
-        st.write("4. Airlines accept AI-GD for instant settlement.")
+        st.info("ℹ️ **Tokenomics:**")
+        st.write("A stable digital currency backed 100% by allocated physical gold, used for instant cross-border settlement without SWIFT delays.")
 
-# =========================================================
-# TAB 5: التحالف (Alliance) - الرسمة رقم 3 (الامتثال)
-# =========================================================
+# === TAB 5: التحالف الاستراتيجي (Alliance) ===
 with tab_partners:
-    st.header("5. The Strategic Alliance & Compliance")
-    
-    # الرسمة الثالثة: الامتثال
-    st.subheader("🛡️ The Compliance Shield (جدار الحماية)")
-    comp = graphviz.Digraph()
-    comp.attr(rankdir='LR', bgcolor='black')
-    comp.attr('node', shape='ellipse', style='filled', fillcolor='#333', fontcolor='white', color='#00FF00')
-    
-    comp.node('TX', 'Transaction')
-    comp.node('OFAC', 'OFAC Check')
-    comp.node('KYC', 'KYC Verify')
-    comp.node('AI', 'AI Risk Score')
-    comp.node('OK', 'APPROVED ✅', color='green', fontcolor='green')
-    comp.node('NO', 'REJECTED ❌', color='red', fontcolor='red')
-    
-    comp.edge('TX', 'OFAC')
-    comp.edge('OFAC', 'KYC')
-    comp.edge('KYC', 'AI')
-    comp.edge('AI', 'OK', ' Low Risk')
-    comp.edge('AI', 'NO', ' High Risk')
-    
-    st.graphviz_chart(comp)
-    
-    st.markdown("---")
-    c_p1, c_p2, c_p3 = st.columns(3)
-    c_p1.success("🛰️ **STARLINK:** Infrastructure")
-    c_p2.warning("🏦 **QNB GROUP:** Treasury")
-    c_p3.info("🛡️ **AMEX GBT:** Compliance")
+    st.header("5. The Strategic Alliance")
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.markdown("### 🛰️ STARLINK")
+        st.write("**Infrastructure Backbone**")
+        st.caption("Connecting the Cloud Nation.")
+    with c2:
+        st.markdown("### 🏦 QNB GROUP")
+        st.write("**Sovereign Treasury**")
+        st.caption("Gold Custodian & Fiat Gateway.")
+    with c3:
+        st.markdown("### 🛡️ AMEX GBT")
+        st.write("**Compliance Shield**")
+        st.caption("Global Corporate Access.")
 
 # ---------------------------------------------------------
 # التذييل
