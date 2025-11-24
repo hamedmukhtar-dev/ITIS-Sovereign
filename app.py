@@ -1,6 +1,7 @@
 # ============================================================
 # ITIS — SOVEREIGN FINANCIAL SYSTEM (V4 EXECUTIVE BUILD)
 # Full Professional Version — Black × Gold Edition
+# Ready-to-drop app.py (English-only, production/demo-ready)
 # ============================================================
 
 import os
@@ -34,6 +35,7 @@ st.markdown(
     .stTabs [data-baseweb="tab"] { background-color: #1b1b1b; color: #888; border: 1px solid #333; padding: 8px 12px; }
     .stTabs [aria-selected="true"] { background-color: #D4AF37 !important; color: black !important; border: 1px solid #D4AF37; }
     .small { font-size:12px; color:#9A9A9A; }
+    .mono { font-family: monospace; color: #CFCFCF; }
 </style>
 """,
     unsafe_allow_html=True,
@@ -76,7 +78,7 @@ with tabs[0]:
         """
 ITIS is a sovereign-grade, non-custodial financial infrastructure engineered for the travel ecosystem.
 It integrates native NDC flows with an AI decision engine (AI-GD), a gold stability layer, licensed bank settlement,
-and resilient satellite connectivity. The system *routes value*; it does not custody it.
+and resilient satellite connectivity. The system routes value; it does not custody it.
 """
     )
     st.subheader("Key Properties")
@@ -203,4 +205,161 @@ with tabs[4]:
     st.markdown(
         """
 AI-GD receives transaction telemetry and returns a route decision:
+
+BANK | GOLD | HYBRID | REVIEW
+
+Design Principles:
+- Deterministic fallback rule engine (local) always available.
+- LLM (OpenAI) used for complex multi-dimensional reasoning with strict prompt engineering.
+- Explainability: store prompt + context + decision.
+- Governance: model monitoring, rate limits, and human-in-the-loop escalation for REVIEW outcomes.
+"""
+    )
+
+    st.subheader("Test AI-GD Decision (Mock logic)")
+    if st.button("Run sample AI-GD decision (demo)"):
+        sample_payload = {
+            "transaction_id": "TRX-0001",
+            "amount": 1250.75,
+            "currency": "USD",
+            "context": {"cross_border": True, "currency_volatility": 0.12},
+            "aml_risk_score": 10,
+        }
+
+        # Simple deterministic decision logic (demo)
+        if sample_payload["aml_risk_score"] > 80:
+            decision = {"route": "REVIEW", "reason": "High AML risk"}
+        elif sample_payload["context"]["cross_border"] and sample_payload["context"]["currency_volatility"] > 0.1:
+            decision = {"route": "GOLD", "reason": "Cross-border + volatility -> gold"}
+        else:
+            decision = {"route": "BANK", "reason": "Standard bank settlement"}
+
+        st.json(decision)
+
+# ----------------------------
+# Tab: Space Layer (Starlink)
+# ----------------------------
+with tabs[5]:
+    st.header("Space Layer (Starlink) — Resilient Connectivity")
+    st.markdown(
+        """
+**Purpose:** Ensure continuous connectivity and operational resilience under degraded terrestrial conditions.
+
+Operational patterns:
+- Primary: Starlink LEO connectivity for core infrastructure
+- Secondary: Terrestrial MPLS / LTE fallback (where available)
+- Offline mode: local queuing and deferred settlement instruction push when link recovers
+
+Notes on deployment: Starlink units are placed in data centers, mobile command units, and regional hubs to guarantee availability and to support high-throughput message exchange.
+"""
+    )
+
+    st.subheader("Connectivity Health (Mock)")
+    st.markdown("Simulated status for demonstration.")
+    st.progress(100)
+    st.success("Space connectivity: ONLINE (simulated)")
+
+# ----------------------------
+# Tab: Architecture Diagram
+# ----------------------------
+with tabs[6]:
+    st.header("Architecture Diagram — Reference & Graphviz")
+    st.markdown("The canonical reference image and a Graphviz rendering are shown below.")
+
+    # Path to the exact image you uploaded earlier (per session)
+    ARCH_REF_PATH = "/mnt/data/ChatGPT Image Nov 15, 2025, 08_50_16 AM.png"
+
+    # show reference image if present
+    try:
+        if Path(ARCH_REF_PATH).exists():
+            img = Image.open(ARCH_REF_PATH)
+            st.image(img, caption="Reference Architecture (uploaded)", use_column_width=True)
+        else:
+            st.warning(f"Reference image not found at: {ARCH_REF_PATH}")
+    except Exception as e:
+        st.error(f"Failed to load reference image: {e}")
+
+    st.subheader("Graphviz — Executive Layout")
+    dot = """
+digraph ITIS {
+  rankdir=TB;
+  bgcolor=black;
+  node [shape=rect, style=filled, fontname=Helvetica, fontcolor=white, fillcolor="#111111", color="#D4AF37"];
+  "END USER\\n(Mobile/Web)" -> "NDC OFFER\\n(Offer Engine)";
+  "NDC OFFER\\n(Offer Engine)" -> "ORDER MGMT\\n(Order & OMS)";
+  "ORDER MGMT\\n(Order & OMS)" -> "NDC DISTRIBUTION\\n(Messaging / ARNs)";
+  "ORDER MGMT\\n(Order & OMS)" -> "GOPAY\\n(Movement Layer)";
+  "GOPAY\\n(Movement Layer)" -> "SETTLEMENT\\n(Bank API)";
+  "SETTLEMENT\\n(Bank API)" -> "GOLD WALLET\\n(Stability Layer)";
+  "ORDER MGMT\\n(Order & OMS)" -> "AI-GD\\n(Decision Engine)";
+  "GOPAY\\n(Movement Layer)" -> "AI-GD\\n(Decision Engine)";
+  "AI-GD\\n(Decision Engine)" -> "ROUTING\\n(BANK/GOLD/HYBRID/REVIEW)";
+  "STARLINK\\n(Space Layer)" -> "All Nodes\\n(Connectivity)";
+  edge [color="#00FFFF"];
+}
+"""
+    try:
+        st.graphviz_chart(dot, use_container_width=True)
+        # Attempt to render & provide PNG download
+        try:
+            src = graphviz.Source(dot)
+            png_bytes = src.pipe(format="png")
+            if png_bytes:
+                st.download_button("Download Graphviz PNG (executive)", data=png_bytes, file_name="itis_graphviz_architecture.png", mime="image/png")
+        except Exception:
+            st.info("Graphviz export not available in this environment; diagram still renders.")
+    except Exception as e:
+        st.error(f"Graphviz render failed: {e}")
+
+# ----------------------------
+# Tab: End-to-End NDC Cycle
+# ----------------------------
+with tabs[7]:
+    st.header("End-to-End NDC Payment Cycle — V4")
+    st.markdown(
+        """
+**Cycle (concise):**
+
+USER → NDC OFFER → ORDER MGMT → GOPAY (Payment Initiation) → AI-GD Decision
+→ [BANK SETTLEMENT / GOLD CONVERSION / HYBRID] → Settlement Confirmation
+→ NDC DISTRIBUTION → AIRLINE / MERCHANT → TICKET ISSUED / SERVICE DELIVERED
+
+Operational notes:
+- All settlement events are logged immutably.
+- AI-GD stores decision context for explainability.
+- Bank callbacks update transaction states and trigger NDC confirmations.
+"""
+    )
+
+    st.subheader("Quick Demo — Simulate a Full Flow (Mock)")
+    if st.button("Simulate Full Flow (demo)"):
+        # Simple mocked execution of the flow with delays to demonstrate sequence
+        st.info("1) Payment initiated at GoPay")
+        time.sleep(0.6)
+        st.info("2) Pre-checks (KYC, AML quick rules)")
+        time.sleep(0.6)
+        st.info("3) AI-GD decision: evaluating")
+        time.sleep(0.8)
+        # simple deterministic decision
+        decision = "GOLD"
+        st.success(f"4) AI-GD decision: {decision}")
+        time.sleep(0.6)
+        st.info("5) Create settlement instruction (bank)")
+        time.sleep(0.6)
+        st.success("6) Bank callback: settled")
+        time.sleep(0.6)
+        st.balloons()
+        st.success("End-to-end simulation complete (mock).")
+
+# ----------------------------
+# Footer / Notes
+# ----------------------------
+st.divider()
+st.markdown(
+    """
+**Executive Note:** This demo application is a non-custodial prototype and does not handle live funds.
+All bank and custodian integrations are placeholders for integration with licensed partners.
+For production deployment: implement secure microservices, vault-managed secrets, robust logging, and legal agreements with banks and custodians.
+"""
+)
 
