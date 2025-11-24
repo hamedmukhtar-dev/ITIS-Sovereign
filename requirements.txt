@@ -1,5 +1,9 @@
-streamlit>=1.20
+streamlit
 graphviz
 Pillow
 openai
 python-dotenv
+streamlit
+pandas
+numpy
+plotly
