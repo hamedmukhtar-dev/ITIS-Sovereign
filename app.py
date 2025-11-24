@@ -1,212 +1,285 @@
-import streamlit as st
-import pandas as pd
-import numpy as np
-import plotly.graph_objects as go
-import graphviz
-from datetime import datetime
+# app.py
+"""
+ITIS — NDC-INTEGRATED SOVEREIGN LAYER (Streamlit)
+English only — Executive presentation + Graphviz + AI-GD placeholder
+Place this file at: itis-sovereign/main/app.py
+Requirements (example): streamlit, graphviz, pillow, openai, python-dotenv
+"""
 
-# ---------------------------------------------------------
-# إعداد الصفحة - يجب أن تكون قبل أي عرض
-# ---------------------------------------------------------
-st.set_page_config(
-    page_title="ITIS | Prototype (Demo)",
-    page_icon="🦅",
-    layout="wide",
-    initial_sidebar_state="expanded"
+import os
+import io
+import json
+import time
+from pathlib import Path
+
+import streamlit as st
+from PIL import Image
+import graphviz
+
+# Optional: OpenAI integration (if you install openai and set OPENAI_API_KEY)
+try:
+    import openai
+except Exception:
+    openai = None
+
+# ----------------------------
+# Configuration
+# ----------------------------
+st.set_page_config(page_title="ITIS — NDC Sovereign Layer", layout="wide", initial_sidebar_state="expanded")
+
+# Customize paths — adjust if needed
+BASE_DIR = Path(__file__).resolve().parent
+LOGO_PATH = BASE_DIR / "assets" / "logo.png"  # optional
+REFERENCE_IMG = BASE_DIR / "assets" / "architecture_reference.png"  # your uploaded PNG
+
+# Theme CSS (simple corporate black/gold)
+st.markdown(
+    """
+    <style>
+    .stApp { background-color: #000000; color: #EDEDED; }
+    .title { color: #D4AF37; font-size:30px; font-weight:700; }
+    .subtitle { color: #00FFFF; font-size:14px; margin-bottom:8px; }
+    .card { background: linear-gradient(180deg,#0b0b0b,#111); border:1px solid #222; padding:14px; border-radius:8px; }
+    .gold { color: #D4AF37; font-weight:700; }
+    .mono { font-family: monospace; color: #CFCFCF; }
+    .small { font-size:12px; color:#9A9A9A; }
+    </style>
+    """,
+    unsafe_allow_html=True
 )
 
-# ---------------------------------------------------------
-# CSS ثابت (آمن) - فقط للستايل، لا تضع HTML ديناميكي هنا
-# ---------------------------------------------------------
-base_css = """
-<style>
-    .stApp { background-color: #000000; color: #E0E0E0; }
-    h1, h2, h3 { color: #D4AF37 !important; font-family: 'Segoe UI', sans-serif; }
-    p, li, span { color: #E0E0E0; font-size: 16px; }
-    .royal-metric { background: linear-gradient(180deg, #111 0%, #1a1a1a 100%); border: 1px solid #D4AF37; padding: 12px; border-radius: 8px; }
-    .royal-metric .stMetricValue { color: #D4AF37 !important; }
-    .royal-btn button { border: 1px solid #D4AF37; color: #D4AF37; background-color: black; width: 100%; }
-    .proto-banner { background: #3b3b3b; padding: 10px; border-left: 4px solid #D4AF37; border-radius: 4px; margin-bottom: 10px; }
-    /* تنبيه: استخدام data-testid قد يتغير مستقبلاً */
-</style>
-"""
-st.markdown(base_css, unsafe_allow_html=True)
+# ----------------------------
+# Helper: AI-GD decision (placeholder)
+# ----------------------------
+def ai_gd_decision(transaction_payload: dict) -> dict:
+    """
+    Example decision wrapper for AI-GD.
+    If OPENAI_API_KEY is set and openai is installed, will call a simple prompt.
+    Otherwise uses a deterministic fallback rule set.
 
-# ---------------------------------------------------------
-# Prototype banner واضح للمستخدمين
-# ---------------------------------------------------------
-st.warning("Prototype / Demo — This application is a concept visualization and NOT an approved sovereign system. For demo purposes only.")
+    Return:
+        {"route": "BANK"|"GOLD"|"HYBRID"|"REVIEW", "reason": "..."}
+    """
+    # Basic rules fallback
+    try:
+        # Try OpenAI if available and configured
+        api_key = os.getenv("OPENAI_API_KEY")
+        if openai is not None and api_key:
+            openai.api_key = api_key
+            prompt = (
+                "You are ITIS AI-GD. Decide route for a transaction. "
+                "Return JSON with fields: route (BANK|GOLD|HYBRID|REVIEW), reason.\n\n"
+                f"Transaction: {json.dumps(transaction_payload)}\n"
+            )
+            resp = openai.ChatCompletion.create(
+                model="gpt-4o-mini",  # you may change model name to available one
+                messages=[{"role": "system", "content": "You are a concise decision engine."},
+                          {"role": "user", "content": prompt}],
+                max_tokens=150,
+                temperature=0.0,
+            )
+            text = resp.choices[0].message.content.strip()
+            # Attempt JSON parse
+            try:
+                parsed = json.loads(text)
+                return {"route": parsed.get("route", "REVIEW"), "reason": parsed.get("reason", text)}
+            except Exception:
+                # fallback: parse naive
+                if "GOLD" in text.upper():
+                    return {"route": "GOLD", "reason": text}
+                if "HYBRID" in text.upper():
+                    return {"route": "HYBRID", "reason": text}
+                if "BANK" in text.upper():
+                    return {"route": "BANK", "reason": text}
+                return {"route": "REVIEW", "reason": text}
+    except Exception as e:
+        # ignore OpenAI failures and continue to rule-based
+        pass
 
-# ---------------------------------------------------------
-# Sidebar (مخفف وآمن - لا ادعاءات ملزمة لشركاء)
-# ---------------------------------------------------------
+    # Deterministic rule-based fallback
+    amount = float(transaction_payload.get("amount", 0))
+    currency = transaction_payload.get("currency", "USD").upper()
+    cross_border = transaction_payload.get("context", {}).get("cross_border", False)
+    volatility = transaction_payload.get("context", {}).get("currency_volatility", 0.0)
+
+    # Simple rules:
+    if transaction_payload.get("aml_risk_score", 0) > 80:
+        return {"route": "REVIEW", "reason": "High AML risk score"}
+    if cross_border and (volatility > 0.1 or amount > 1000):
+        return {"route": "GOLD", "reason": "Cross-border + volatility/large amount -> gold candidate"}
+    if amount <= 1000:
+        return {"route": "BANK", "reason": "Standard bank settlement preferred"}
+    return {"route": "HYBRID", "reason": "Mixed routing due to size/conditions"}
+
+# ----------------------------
+# Sidebar / Header
+# ----------------------------
 with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/9326/9326394.png", width=80)
-    st.title("🦅 ITIS CORE (Prototype)")
-    st.caption("Concept Demo — Global Cloud Economy (Prototype)")
+    st.image(str(LOGO_PATH)) if LOGO_PATH.exists() else st.markdown("<div class='title'>ITIS</div>", unsafe_allow_html=True)
+    st.markdown("**ITIS — NDC Integrated Sovereign Layer (English only)**")
     st.markdown("---")
-    st.info("📡 **Connectivity (Potential):** Satellite-backed networks (concept)")
-    st.info("🏦 **Treasury (Potential):** Financial partner(s) under discussion")
-    st.info("🛡️ **Compliance (Potential):** Compliance providers under discussion")
+    st.markdown("Quick actions:")
+    st.write("- Export architecture PNG (use button on page)")
+    st.write("- Configure OPENAI_API_KEY for AI-GD testing")
     st.markdown("---")
-    st.write("Commander (Demo): **Hamed Mukhtar**")
-    st.write("Version: **6.0 (Prototype)**")
+    st.markdown("Status:")
+    openai_state = "configured" if (openai is not None and os.getenv("OPENAI_API_KEY")) else "not configured"
+    st.markdown(f"- OpenAI: **{openai_state}**")
     st.markdown("---")
-    st.caption(f"Last updated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}")
+    st.markdown("Contact: Hamed Mukhtar — Dar Al Khartoum Alliance")
+
+# ----------------------------
+# Page Header
+# ----------------------------
+col1, col2 = st.columns([1, 6])
+with col1:
+    if LOGO_PATH.exists():
+        st.image(str(LOGO_PATH), width=84)
+with col2:
+    st.markdown('<div class="title">ITIS — NDC-Integrated Sovereign Layer</div>', unsafe_allow_html=True)
+    st.markdown('<div class="subtitle">NDC: OFFER • ORDER • MESSAGING • DISTRIBUTION — Integrated with AI-GD and Gold Settlement</div>', unsafe_allow_html=True)
 
 st.divider()
 
-# ---------------------------------------------------------
-# Header - تم تلطيف اللغة الرسمية
-# ---------------------------------------------------------
-c1, c2 = st.columns([1, 5])
-with c2:
-    st.title("ITIS: Concept Protocol (Prototype)")
-    st.markdown("### 🌍 Concept Demo — Cloud-Native Economic Model (Visualization Only)")
-    st.markdown("**Status:** `DEMO` | **Asset (Concept):** `Gold (RWA)` | **Scope:** `Conceptual`")
-st.divider()
+# ----------------------------
+# Architecture Graphviz (English only)
+# ----------------------------
+st.subheader("Architecture Diagram — Executive (English)")
 
-# ---------------------------------------------------------
-# Tabs الرئيسية
-# ---------------------------------------------------------
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "📜 GLOBAL VISION",
-    "🚀 LIVE OPERATIONS",
-    "🏗️ MASTER FLOW",
-    "💎 TOKEN MODEL",
-    "🤝 PARTNERS (POTENTIAL)"
-])
+dot = """
+digraph ITIS_NDC {
+  rankdir=TB;
+  node [shape=rect, style=filled, fontname=Helvetica, fontcolor=white, fillcolor="#111111", color="#D4AF37"];
+  "END USER\\n(Mobile / Web)" -> "NDC OFFER\\n(Offer Engine)";
+  "NDC OFFER\\n(Offer Engine)" -> "ORDER MANAGEMENT\\n(Order & OMS)";
+  "ORDER MANAGEMENT\\n(Order & OMS)" -> "NDC DISTRIBUTION\\n(Messaging / ARNs)";
+  "ORDER MANAGEMENT\\n(Order & OMS)" -> "GOPAY\\n(Movement Layer)";
+  "GOPAY\\n(Movement Layer)" -> "SETTLEMENT LAYER\\n(Bank APIs)";
+  "SETTLEMENT LAYER\\n(Bank APIs)" -> "GOLD WALLET\\n(Stability Layer)";
+  "ORDER MANAGEMENT\\n(Order & OMS)" -> "AI-GD\\n(OpenAI Decision Engine)";
+  "GOPAY\\n(Movement Layer)" -> "AI-GD\\n(OpenAI Decision Engine)";
+  "AI-GD\\n(OpenAI Decision Engine)" -> "ROUTING ENGINE\\n(Bank / Gold / Hybrid / Review)";
+  "STARLINK\\n(Space Layer)" -> "All Nodes\\n(Connectivity)";
+  edge [color=\"#00FFFF\", fontsize=10];
+}
+"""
 
-# ---------------------------------------------------------
-# Utility: Cached fake metrics (مثال)
-# ---------------------------------------------------------
-@st.cache_data(ttl=60)
-def get_demo_metrics():
-    # في الواقع: استبدل هذا بمنبع بيانات حقيقي أو API موثوق
-    return {
-        "gold_kg": 1452.5,
-        "ai_gd_price": 68.82,
-        "debt_cleared_usd": 12_400_000,
-        "active_nodes": 10420
-    }
+# Display Graphviz
+st.graphviz_chart(dot, use_container_width=True)
 
-metrics = get_demo_metrics()
-
-# === TAB 1: الرؤية العالمية ===
-with tab1:
-    st.header("1. Strategic Vision: Cloud-Native Economy (Concept)")
-    col_v1, col_v2 = st.columns([1, 1])
-    with col_v1:
-        st.markdown("""
-        ### **Who We Are (Demo):**
-        This is a concept prototype illustrating a potential alternative digital financial layer for travel ecosystems.
-        
-        ### **The Scope (Concept Audience):**
-        * 🌍 **Diaspora / Remote Users:** Global access scenarios (satellite-enabled as concept)
-        * 🏢 **Corporates / Travel Industry:** Integration concepts with travel platforms
-        * ✈️ **Travelers:** Conceptual seamless settlement flows
-        """)
-    with col_v2:
-        st.info("ℹ️ **Mission (Concept):** Explore mechanisms to convert distressed assets into asset-backed representations (demo only).")
-        # رسم مبسط للنطاق - ضمن try/except للحماية
-        try:
-            scope = graphviz.Digraph()
-            scope.attr(rankdir='TB')
-            scope.attr('node', shape='rect', style='filled', fillcolor='#222', fontcolor='white', color='#D4AF37')
-            scope.edge('DIASPORA', 'ITIS CORE'); scope.edge('AMEX CORP (Demo)', 'ITIS CORE'); scope.edge('TRAVELERS', 'ITIS CORE')
-            st.graphviz_chart(scope)
-        except Exception as e:
-            st.error("Visualization failed: " + str(e))
-
-# === TAB 2: غرفة القيادة (Live Ops - Demo Metrics) ===
-with tab2:
-    st.header("2. Command Center (Demo Metrics)")
-    m1, m2, m3, m4 = st.columns(4)
-    # استخدام أرقام فعلية (نوعياً) لتسهيل العمليات الحسابية لاحقاً
-    m1.metric("🥇 Gold Reserve (kg)", value=metrics["gold_kg"], delta="2.1%")
-    m2.metric("💎 AI-GD Token (USD)", value=f"${metrics['ai_gd_price']}", delta="Pegged")
-    m3.metric("✈️ Debt Cleared (USD)", value=f"${metrics['debt_cleared_usd']:,}", delta="Paid")
-    m4.metric("📡 Active Nodes", value=int(metrics["active_nodes"]), delta="Online")
-
-    st.markdown("---")
-    st.subheader("🌍 Global Settlement Layer (Demo)")
-    # خريطة توضيحية Plotly داخل try/except
+# Attempt to export Graphviz as PNG and make downloadable
+st.write("")
+col_a, col_b = st.columns([1, 1])
+with col_a:
     try:
-        fig_globe = go.Figure(go.Scattergeo(
-            lon=[32.55, 51.51, -74.00, -0.12, 55.27],
-            lat=[15.50, 25.28, 40.71, 51.50, 25.20],
-            mode='markers+lines',
-            line=dict(width=2, color='#D4AF37'),
-            marker=dict(size=8)
-        ))
-        fig_globe.update_layout(
-            geo=dict(showland=True, landcolor="#111", bgcolor="black"),
-            height=450, margin={"r":0,"t":0,"l":0,"b":0},
-            paper_bgcolor="black"
-        )
-        st.plotly_chart(fig_globe, use_container_width=True)
+        gv = graphviz.Source(dot)
+        png_bytes = gv.pipe(format='png')
+        if png_bytes:
+            st.download_button("Download Architecture PNG", data=png_bytes, file_name="itis_architecture_graphviz.png", mime="image/png")
     except Exception as e:
-        st.error("Map rendering failed: " + str(e))
+        st.warning("Graphviz PNG export unavailable in this environment. You can still view the diagram above.")
+        # no raise
 
-# === TAB 3: المخطط الهندسي المتكامل ===
-with tab3:
-    st.header("3. Master Process Flow (Demo)")
-    st.markdown("### من الطلب إلى التذكرة: رحلة مفاهيمية")
-    try:
-        flow = graphviz.Digraph()
-        flow.attr(rankdir='LR', splines='ortho')
-        flow.attr('node', shape='rect', style='filled', fontname='Arial')
-        flow.node('User', '👤 1. العميل / User\n[طلب حجز + دفع]', fillcolor='#00FFFF')
-        flow.node('Space', '🛰️ 2. الشبكة (Concept)\n[تشفير ونقل]', fillcolor='#333333', fontcolor='white')
-        flow.node('Brain', '🧠 3. Decision Engine\n[تحليل/توجيه]', fillcolor='#8e44ad', fontcolor='white')
-        flow.node('Compliance', '🛡️ 4. Compliance (Demo)\n[فحوصات]', fillcolor='#27ae60', fontcolor='white')
-        flow.node('Treasury', '🏦 5. Treasury (Concept)\n[Asset Holding]', fillcolor='#FFD700')
-        flow.node('Token', '💎 6. Token (AI-GD)\n[Representation]', fillcolor='#F1C40F')
-        flow.node('Airline', '✈️ 7. Airline\n[Issue e-Ticket]', fillcolor='#c0392b', fontcolor='white')
-
-        flow.edge('User', 'Space', label=' 1')
-        flow.edge('Space', 'Brain', label=' 2')
-        flow.edge('Brain', 'Compliance', label=' 3')
-        flow.edge('Compliance', 'Treasury', label=' 4')
-        flow.edge('Treasury', 'Token', label=' 5')
-        flow.edge('Token', 'Airline', label=' 6')
-        flow.edge('Airline', 'User', label=' تذكرة (e-Ticket)', style='dashed')
-        st.graphviz_chart(flow, use_container_width=True)
-    except Exception as e:
-        st.error("Flow visualization failed: " + str(e))
-    st.info("ℹ️ Legend (Demo Colors): User (cyan) → Network (dark) → Engine (purple) → Compliance (green) → Treasury (gold) → Airline (red).")
-
-# === TAB 4: نموذج العملة (مفهومي) ===
-with tab4:
-    st.header("4. AI-GD Tokenomics (Concept)")
-    c1, c2 = st.columns(2)
-    with c1:
+with col_b:
+    # Show uploaded reference image if present
+    if REFERENCE_IMG.exists():
         try:
-            token = graphviz.Digraph()
-            token.attr(rankdir='TB')
-            token.attr('node', shape='ellipse', style='filled', fillcolor='#111', fontcolor='#00FFFF')
-            token.edge('Debt (Local)', 'Gold (Raw)')
-            token.edge('Gold (Raw)', 'Vault (Concept)')
-            token.edge('Vault (Concept)', 'AI-GD Token')
-            token.edge('AI-GD Token', 'Payment')
-            st.graphviz_chart(token)
-        except Exception as e:
-            st.error("Token diagram failed: " + str(e))
-    with c2:
-        st.write("**Mechanism (Concept):** Debt-to-Asset Swap → Asset Representation → Tokenized Settlement (Demo only).")
-        st.caption("Note: This is a conceptual flow for demonstration; actual token economics, legal compliance and audits are required for any real issuance.")
+            img = Image.open(REFERENCE_IMG)
+            st.image(img, caption="Reference architecture (original PNG)", use_column_width=True)
+        except Exception:
+            st.error("Failed to load reference image.")
 
-# === TAB 5: التحالف (محتمل) ===
-with tab5:
-    st.header("5. Strategic Partners (Potential / Under Discussion)")
-    c1, c2, c3 = st.columns(3)
-    c1.info("🛰️ Satellite Network (Potential)")
-    c2.info("🏦 Financial Partner (Potential)")
-    c3.info("🛡️ Compliance Provider (Potential)")
-    st.markdown("**Note:** All partner references are illustrative and subject to formal agreements and approvals.")
+st.markdown("---")
 
-# ---------------------------------------------------------
-# Footer (معدل) - تجنّب ادعاءات ملكية قوية
-# ---------------------------------------------------------
-st.divider()
-st.caption("Demo / Concept — For internal review and research purposes only. Not an operational system.")
+# ----------------------------
+# Executive sections for 5 layers (English only)
+# ----------------------------
+st.header("Executive Layer Summaries")
+
+# Movement Layer (GoPay)
+with st.expander("Layer 1 — Movement Layer (GoPay) — Executive Detail", expanded=True):
+    st.markdown("**Purpose:** GoPay is the Movement Layer — entry point for value and the primary data sensor for AI-GD.")
+    st.markdown("- **User Wallet (non-custodial):** payment initiation, tokenized QR, transaction history.")
+    st.markdown("- **Merchant Wallet:** invoice, settlement request, reporting.")
+    st.markdown("- **Payment Gateway (API):** REST endpoints, webhooks, merchant keys.")
+    st.markdown("- **Transaction Engine:** validation, anti-dup, routing to settlement.")
+    st.markdown("- **Behavior & Risk Module:** pre-AI anomaly detection and scoring.")
+    st.markdown("- **Integration Layer:** bank APIs, telco/mobile money, travel systems (NDC/GDS).")
+    st.markdown("- **Pre-settlement Processor:** prepares ISO-like payload for bank settlement.")
+    st.markdown("")
+    st.markdown("**Non-custodial legal position:** GoPay coordinates movement and sends settlement instructions. It does not hold or custody client funds.")
+
+# Settlement Layer (Bank)
+with st.expander("Layer 2 — Settlement Layer (Bank) — Executive Detail", expanded=False):
+    st.markdown("**Purpose:** Institutional trust anchor that executes financial finality through licensed bank rails.")
+    st.markdown("- Receive structured settlement instructions and authorize reservations.")
+    st.markdown("- Reconciliation, exception handling, and audit trail.")
+    st.markdown("- AML/KYC enforcement and regulatory reporting.")
+    st.markdown("- Interface with custodians for asset-conversion directives (e.g., gold).")
+    st.markdown("")
+    st.markdown("**Why banks:** Banks provide legal finality, ledger authority, and regulatory accountability. ITIS sends instructions; banks execute.")
+
+# Stability Layer (Gold Wallet)
+with st.expander("Layer 3 — Stability Layer (Gold Wallet) — Executive Detail", expanded=False):
+    st.markdown("**Purpose:** Anchor value by converting designated settlement amounts into gold-backed holdings (via custodian).")
+    st.markdown("- Gold conversion directives are sent as custodial instructions to licensed custodians.")
+    st.markdown("- This layer reduces volatility and provides a stable reference value (AI-GD uses this in decisioning).")
+    st.markdown("- ITIS coordinates conversion instructions but does not custody the gold.")
+
+# Intelligence Layer (AI-GD)
+with st.expander("Layer 4 — Intelligence Layer (AI-GD) — Executive Detail", expanded=False):
+    st.markdown("**Purpose:** Real-time decisioning and stabilization engine. Integrates LLMs/ML with rules engines.")
+    st.markdown("- Routing logic: Bank / Gold / Hybrid / Review.")
+    st.markdown("- Fraud detection, behavior scoring, liquidity forecasting.")
+    st.markdown("- Explainability, audit logs, and governance are mandatory.")
+    st.markdown("- Integration pattern: microservice (FastAPI) with secure logs and fallback rule engine.")
+
+# Space Layer (Starlink)
+with st.expander("Layer 5 — Space Layer (Starlink) — Executive Detail", expanded=False):
+    st.markdown("**Purpose:** Resilient connectivity to ensure uptime in degraded environments.")
+    st.markdown("- Satellite connectivity provides continuity during terrestrial network failures.")
+    st.markdown("- Supports remote operations, over-the-horizon liquidity coordination, and global availability.")
+
+st.markdown("---")
+
+# ----------------------------
+# Quick demo: sample payload & AI decision
+# ----------------------------
+st.header("Demo: Sample Transaction & AI-GD Routing (Example)")
+
+sample_payload = {
+    "transaction_id": "TRX-0001",
+    "amount": 1250.75,
+    "currency": "USD",
+    "merchant_id": "M-203",
+    "user_id": "U-9001",
+    "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    "context": {"travel_order": True, "cross_border": True, "currency_volatility": 0.12},
+    "aml_risk_score": 10
+}
+
+st.subheader("Sample payload (JSON)")
+st.code(json.dumps(sample_payload, indent=2), language="json")
+
+if st.button("Run AI-GD Decision (example)"):
+    with st.spinner("AI-GD evaluating..."):
+        decision = ai_gd_decision(sample_payload)
+        st.success(f"Route: {decision['route']}")
+        st.write("Reason:", decision["reason"])
+
+st.markdown("---")
+
+# ----------------------------
+# Next steps & developer notes
+# ----------------------------
+st.header("Developer Notes & Next Steps")
+st.markdown("""
+- Add real OpenAI API key as environment variable `OPENAI_API_KEY` for AI-GD integration.
+- Implement ai_gd_decision as a secure microservice (recommended FastAPI) for production.
+- Wire GoPay payment gateway endpoints to a Bank Sandbox for end-to-end testing.
+- Implement immutable logging (append-only) for all settlement instructions.
+- After testing, integrate custodial Gold Wallet APIs and finalize SLA and legal agreements.
+- Add monitoring, alerting, and stress tests using Starlink connectivity scenarios.
+""")
+
+st.success("App page loaded. Export the Graphviz PNG above, or replace reference architecture image in /assets and redeploy.")
