@@ -2,11 +2,17 @@
 # ITIS — SOVEREIGN FINANCIAL SYSTEM (V4 EXECUTIVE BUILD)
 # Full Professional Version — Black × Gold Edition
 # Ready-to-drop app.py (English-only, production/demo-ready)
+# + Integrated: GoLite Agency Dashboard (Streamlit)
+# + Passenger details & PNR generator
+# + Bank Callback (Webhook) simulator
 # ============================================================
 
 import os
 import json
 import time
+import uuid
+import random
+import string
 import streamlit as st
 import graphviz
 from PIL import Image
@@ -36,6 +42,7 @@ st.markdown(
     .stTabs [aria-selected="true"] { background-color: #D4AF37 !important; color: black !important; border: 1px solid #D4AF37; }
     .small { font-size:12px; color:#9A9A9A; }
     .mono { font-family: monospace; color: #CFCFCF; }
+    .gl-card { background-color: #0f1724; border: 1px solid #1f2937; padding: 12px; border-radius: 12px; }
 </style>
 """,
     unsafe_allow_html=True,
@@ -54,7 +61,7 @@ with col2:
 st.divider()
 
 # ----------------------------
-# Tabs
+# Tabs (added: Agency Dashboard (GoLite))
 # ----------------------------
 tabs = st.tabs(
     [
@@ -66,6 +73,7 @@ tabs = st.tabs(
         "Space Layer (Starlink)",
         "Architecture Diagram",
         "End-to-End NDC Cycle",
+        "Agency Dashboard (GoLite)",
     ]
 )
 
@@ -159,13 +167,59 @@ authorization, posting, reconciliation, AML/KYC checks, and sending confirmation
                 "bank_reference": "QNB-REF-9922",
                 "estimated_settlement_time": "5 seconds",
             }
+            # persist to session for demo callbacks
+            if "mock_instructions" not in st.session_state:
+                st.session_state.mock_instructions = {}
+            st.session_state.mock_instructions[mocked_instruction["instruction_id"]] = mocked_instruction
             st.success("Instruction created (mock)")
             st.json(mocked_instruction)
 
     st.markdown(
         """
 **Bank Callback Simulation (for Demo):**
-Use the bank callback endpoint to mark instruction as `settled`. ITIS expects a callback with the instruction_id and settlement details.
+Use the form below to simulate a bank callback that changes an instruction's state to `settled` (or other).
+You can also copy the sample `curl` to simulate an external webhook POST.
+"""
+    )
+
+    # Callback simulator
+    st.subheader("Simulate Bank Callback (Webhook)")
+    with st.form("bank_callback_sim"):
+        cb_inst_id = st.text_input("Instruction ID (e.g., INST-163...)")
+        cb_status = st.selectbox("Status", ["settled", "rejected", "processing"])
+        cb_bank_ref = st.text_input("Bank Reference", value=f"QNB-REF-{random.randint(1000,9999)}")
+        cb_settled_at = st.text_input("Settled Timestamp (ISO)", value=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
+        submit_cb = st.form_submit_button("Send Callback (simulate)")
+        if submit_cb:
+            payload = {
+                "instruction_id": cb_inst_id,
+                "status": cb_status,
+                "bank_reference": cb_bank_ref,
+                "settled_at": cb_settled_at,
+            }
+            # update mock instruction if exists
+            if "mock_instructions" in st.session_state and cb_inst_id in st.session_state.mock_instructions:
+                st.session_state.mock_instructions[cb_inst_id]["status"] = cb_status
+                st.session_state.mock_instructions[cb_inst_id]["bank_reference"] = cb_bank_ref
+                st.session_state.mock_instructions[cb_inst_id]["settled_at"] = cb_settled_at
+                st.success(f"Callback applied locally to {cb_inst_id} (mock).")
+                st.json(payload)
+            else:
+                st.warning("Instruction not found in local mock store — still showing simulated callback payload.")
+                st.json(payload)
+
+    st.markdown("**Sample curl (simulate external bank POST):**")
+    st.code(f"curl -X POST https://your-itis-endpoint.example/v1/settlement/callbacks -H \"Content-Type: application/json\" -d '{json.dumps({'instruction_id':'INST-XXXXX','status':'settled','bank_reference':'QNB-REF-1234','settled_at':time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())})}'", language="bash")
+
+    # show mock instructions table if exist
+    if "mock_instructions" in st.session_state and st.session_state.mock_instructions:
+        st.markdown("### Mock Instructions (local store)")
+        st.json(st.session_state.mock_instructions)
+
+    st.markdown(
+        """
+**Note:** This callback simulator is for demo/testing. For production, implement a secure endpoint with HMAC verification
+and TLS, and validate the bank signature before accepting settlement state changes.
 """
     )
 
@@ -322,7 +376,7 @@ with tabs[7]:
 
 USER → NDC OFFER → ORDER MGMT → GOPAY (Payment Initiation) → AI-GD Decision
 → [BANK SETTLEMENT / GOLD CONVERSION / HYBRID] → Settlement Confirmation
-→ NDC DISTRIBUTION → AIRLINE / MERCHANT → TICKET ISSUED / SERVICE DELIVERED
+→ NDC DISTRIBUTION → AIRLINE / MERCHANT → TICKET ISSUED /SERVICE DELIVERED
 
 Operational notes:
 - All settlement events are logged immutably.
@@ -352,14 +406,179 @@ Operational notes:
         st.success("End-to-end simulation complete (mock).")
 
 # ----------------------------
-# Footer / Notes
+# Tab: Agency Dashboard (GoLite) — Integrated UI from the React mockup
 # ----------------------------
-st.divider()
-st.markdown(
-    """
-**Executive Note:** This demo application is a non-custodial prototype and does not handle live funds.
-All bank and custodian integrations are placeholders for integration with licensed partners.
-For production deployment: implement secure microservices, vault-managed secrets, robust logging, and legal agreements with banks and custodians.
-"""
-)
+with tabs[8]:
+    st.header("Agency Dashboard — GoLite NDC (Demo UI)")
+    st.markdown("واجهة تجريبية للحجوزات — بحث الرحلات، عرض النتائج، عربة الحجز، ودفع تجريبي عبر eWallet.")
+    st.markdown("تحتوي الآن على: Passenger info + PNR generation + Booking flow (محاكاة).")
 
+    # initialize session state items
+    if "gl_cart" not in st.session_state:
+        st.session_state.gl_cart = []
+    if "gl_selected" not in st.session_state:
+        st.session_state.gl_selected = None
+    if "gl_query" not in st.session_state:
+        st.session_state.gl_query = {"from": "Khartoum (KRT)", "to": "Cairo (CAI)", "date": time.strftime("%Y-%m-%d", time.gmtime(time.time()+86400)), "passengers": 1}
+    if "bookings" not in st.session_state:
+        st.session_state.bookings = {}
+
+    # sample flights (same data as React mock)
+    sample_flights = [
+        {
+            "id": "FL001",
+            "airline": "SudanAir",
+            "depart": "06:30",
+            "arrive": "08:45",
+            "duration": "2h 15m",
+            "price": "$120",
+            "stops": 0,
+            "fareClass": "Economy",
+        },
+        {
+            "id": "FL002",
+            "airline": "Blue Nile",
+            "depart": "09:20",
+            "arrive": "11:40",
+            "duration": "2h 20m",
+            "price": "$135",
+            "stops": 0,
+            "fareClass": "Economy Plus",
+        },
+        {
+            "id": "FL003",
+            "airline": "NileConnect",
+            "depart": "14:10",
+            "arrive": "16:35",
+            "duration": "2h 25m",
+            "price": "$99",
+            "stops": 1,
+            "fareClass": "Promo",
+        },
+    ]
+
+    # Layout: left (search + results + passenger form), right (cart + quick actions)
+    left_col, right_col = st.columns([2, 1])
+
+    with left_col:
+        with st.form("gl_search_form"):
+            st.markdown("### بحث الرحلات")
+            col_a, col_b, col_c, col_d = st.columns([4, 4, 2, 1])
+            with col_a:
+                q_from = st.text_input("من", value=st.session_state.gl_query["from"])
+            with col_b:
+                q_to = st.text_input("إلى", value=st.session_state.gl_query["to"])
+            with col_c:
+                q_date = st.date_input("تاريخ", value=st.session_state.gl_query["date"])
+            with col_d:
+                q_pax = st.number_input("ركاب", min_value=1, value=st.session_state.gl_query["passengers"], step=1)
+            submitted = st.form_submit_button("بحث")
+            if submitted:
+                st.session_state.gl_query = {"from": q_from, "to": q_to, "date": str(q_date), "passengers": int(q_pax)}
+                st.success("تم تحديث معايير البحث (محاكاة).")
+
+        st.markdown("### نتائج البحث")
+        st.markdown(f"عرض {len(sample_flights)} رحلات — من {st.session_state.gl_query['from']} إلى {st.session_state.gl_query['to']} بتاريخ {st.session_state.gl_query['date']}")
+
+        for f in sample_flights:
+            box = st.container()
+            with box:
+                st.markdown("---")
+                c1, c2 = st.columns([4, 1])
+                with c1:
+                    st.markdown(f"**{f['airline']} — {f['id']}**")
+                    st.markdown(f"{f['depart']} → {f['arrive']} • {f['duration']}  • Class: {f['fareClass']} • Stops: {f['stops']}")
+                with c2:
+                    st.markdown(f"**{f['price']}**")
+                    add_col, det_col = st.columns(2)
+                    with add_col:
+                        if st.button(f"أضف للحجز — {f['id']}", key=f"add_{f['id']}"):
+                            st.session_state.gl_cart.append(f)
+                            st.success(f"أضيفت الرحلة {f['id']} للعربة (محاكاة).")
+                    with det_col:
+                        if st.button(f"تفاصيل — {f['id']}", key=f"det_{f['id']}"):
+                            st.session_state.gl_selected = f
+
+        # selected details
+        if st.session_state.gl_selected:
+            st.markdown("### تفاصيل الرحلة المحددة")
+            s = st.session_state.gl_selected
+            st.json(s)
+            if st.button("أضف الرحلة المحددة للعربة"):
+                st.session_state.gl_cart.append(s)
+                st.success("أضيفت الرحلة للعربة (محاكاة).")
+            if st.button("إغلاق التفاصيل"):
+                st.session_state.gl_selected = None
+
+        st.markdown("---")
+        st.markdown("### تفاصيل الراكب (Passenger Info) — لإنشاء PNR وحجز")
+        with st.form("passenger_form"):
+            pax_count = st.number_input("عدد الراكبين في الحجز", min_value=1, max_value=9, value=1)
+            pax_list = []
+            st.write("املأ بيانات كل راكب ثم اضغط 'حفظ ركّاب' — سيتم توليد PNR عند الحجز.")
+            for i in range(pax_count):
+                st.markdown(f"**راكب #{i+1}**")
+                p_cols = st.columns([2, 2, 2])
+                with p_cols[0]:
+                    name = st.text_input(f"الاسم الكامل #{i+1}", key=f"pax_name_{i}")
+                with p_cols[1]:
+                    passport = st.text_input(f"رقم الجواز #{i+1}", key=f"pax_pass_{i}")
+                with p_cols[2]:
+                    dob = st.date_input(f"تاريخ الميلاد #{i+1}", key=f"pax_dob_{i}")
+                contact_cols = st.columns([2, 1])
+                with contact_cols[0]:
+                    email = st.text_input(f"البريد الإلكتروني #{i+1}", key=f"pax_email_{i}")
+                with contact_cols[1]:
+                    phone = st.text_input(f"هاتف #{i+1}", key=f"pax_phone_{i}")
+                pax_list.append({"name": name, "passport": passport, "dob": str(dob), "email": email, "phone": phone})
+            save_pax = st.form_submit_button("حفظ الركاب")
+            if save_pax:
+                st.session_state.current_passengers = pax_list
+                st.success("تم حفظ بيانات الركاب (محاكاة).")
+
+    with right_col:
+        st.markdown("### عربة الحجوزات")
+        if len(st.session_state.gl_cart) == 0:
+            st.info("لم تضف أي رحلة بعد. اضغط 'أضف للحجز' لإضافة رحلة هنا.")
+        else:
+            total = 0.0
+            for idx, c in enumerate(st.session_state.gl_cart):
+                st.markdown(f"- **{c['airline']} {c['id']}** — {c['depart']} → {c['arrive']}  • {c['fareClass']}  • {c['price']}")
+                # parse price number
+                try:
+                    total += float(c["price"].replace("$", ""))
+                except Exception:
+                    pass
+            st.markdown(f"**الإجمالي (تقريبي): {total:.2f}$**")
+
+            # Booking / PNR creation
+            if st.button("انشاء حجز & توليد PNR (محاكاة)"):
+                # require passenger details
+                pax = st.session_state.get("current_passengers", None)
+                if not pax:
+                    st.error("يجب ملء بيانات الركاب قبل إنشاء الحجز.")
+                else:
+                    # generate booking id and PNR
+                    booking_id = f"BK-{int(time.time())}-{random.randint(100,999)}"
+                    pnr = "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
+                    # create booking record
+                    booking = {
+                        "booking_id": booking_id,
+                        "pnr": pnr,
+                        "flights": st.session_state.gl_cart.copy(),
+                        "passengers": pax,
+                        "total": total,
+                        "status": "pending_payment",
+                        "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                    }
+                    st.session_state.bookings[booking_id] = booking
+                    # create a settlement instruction mock for demo
+                    inst_id = f"INST-{int(time.time())}"
+                    if "mock_instructions" not in st.session_state:
+                        st.session_state.mock_instructions = {}
+                    st.session_state.mock_instructions[inst_id] = {
+                        "instruction_id": inst_id,
+                        "transaction_id": booking_id,
+                        "status": "created",
+                        "bank_reference": None,
+                        "estimated_settlement_time": "n/a",
