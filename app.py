@@ -72,7 +72,7 @@ with st.sidebar:
     st.info("🛡️ **GUARD:** AMEX GBT")
     st.markdown("---")
     st.write("Commander: **Hamed Mukhtar**")
-    st.write("Build: **v8.1 (Stable)**")
+    st.write("Build: **v8.2 (Stable Fix)**")
 
 # ---------------------------------------------------------
 # 4. الرأس
@@ -107,7 +107,7 @@ with tab1:
         scope.attr('node', shape='rect', style='filled', fillcolor='#222', fontcolor='white', color='#D4AF37')
         scope.edge('DIASPORA', 'ITIS CORE'); scope.edge('AMEX CORP', 'ITIS CORE'); scope.edge('TRAVELERS', 'ITIS CORE')
         st.graphviz_chart(scope)
-    exceptException:
+    except Exception:
         st.error("Diagram Error: Please check packages.txt")
 
 # === TAB 2: LIVE OPS ===
