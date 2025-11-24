@@ -1,12 +1,4 @@
-streamlit
-graphviz
-Pillow
-openai
-python-dotenv
-streamlit
-pandas
-numpy
-plotly
+
 fastapi==0.95.2
 uvicorn[standard]==0.22.0
 httpx==0.24.1
