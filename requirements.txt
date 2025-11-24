@@ -1,5 +1,7 @@
-streamlit
-pandas
-numpy
-plotly
+streamlit>=1.20
 graphviz
+Pillow
+openai
+fastapi
+uvicorn
+python-dotenv
