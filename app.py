@@ -1,165 +1,94 @@
-# app.py
+# app.py — Streamlit frontend using JWT auth from backend
 import os
-import time
 import json
-import requests
+import time
+import logging
+from typing import Optional
+
 import streamlit as st
+import httpx
 
-# Optional: OpenAI streaming if OPENAI_API_KEY present
-try:
-    import openai
-    OPENAI_AVAILABLE = True
-except Exception:
-    OPENAI_AVAILABLE = False
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("itis_frontend_jwt")
 
-st.set_page_config(page_title="Dara Investor Platform", layout="wide")
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000").rstrip("/")
 
-# ---------- Configuration ----------
-BACKEND_BASE = os.environ.get("REACT_APP_BACKEND_BASE", os.environ.get("BACKEND_BASE", ""))
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY", None)
+# session init
+if "access_token" not in st.session_state:
+    st.session_state.access_token = None
+if "user" not in st.session_state:
+    st.session_state.user = None
 
-if OPENAI_API_KEY and OPENAI_AVAILABLE:
-    openai.api_key = OPENAI_API_KEY
+st.set_page_config(page_title="ITIS — JWT Auth Demo", page_icon="🦅", layout="wide")
 
-# Mock fixtures (fallback)
-MOCK_DATA = {
-    "signedUrls": {
-        "Master_Investor_Deck.pptx": "https://example.com/files/Master_Investor_Deck.pptx",
-        "Dara_Investment_Files.zip": "https://example.com/files/Dara_Investment_Files.zip",
-        "KYC_Initiative.pdf": "https://example.com/files/KYC_Initiative.pdf"
-    },
-    "replies": {
-        "hello": "أهلًا! كيف أستطيع مساعدتك بخصوص المشروعات؟",
-        "summarize master": "الملف الرئيسي يتضمن خطة نمو 3 سنوات، توافق مع IATA، وخطة دمج محفظة دفع محلية."
-    },
-    "defaultReply": "مرحبًا — هذه إجابة تجريبية من الخادم المحلي."
-}
+st.title("ITIS — Login (JWT)")
 
-BRAND = {"name": "Dara"}
+def api_post(path: str, payload: dict):
+    url = f"{BACKEND_URL}{path}"
+    headers = {}
+    if st.session_state.access_token:
+        headers["Authorization"] = f"Bearer {st.session_state.access_token}"
+    with httpx.Client(timeout=8.0) as c:
+        r = c.post(url, json=payload, headers=headers)
+        r.raise_for_status()
+        return r.json()
 
-initial_projects = [
-    {
-        "id": "kyc",
-        "title": "KYC Initiative",
-        "tagline": "AI-Enhanced Sudan Digital Identity",
-        "description": "نظام KYC رقمي مدعوم بالذكاء الاصطناعي للتحقق البيومتري، تحليل المخاطر، وربط المستخدمين بالمؤسسات المالية.",
-        "files": [{"name": "KYC_Initiative.pdf", "key": "KYC_Initiative.pdf"}],
-        "tags": ["KYC", "AI", "Compliance"],
-    },
-    {
-        "id": "dara-plan",
-        "title": "Dara Business Plan",
-        "tagline": "TravelTech + AI Business Plan",
-        "description": "خطة عمل كاملة لشركة دارا تتضمن الرؤية، السوق، نموذج الإيرادات، وخطة التوسع 2025-2027.",
-        "files": [{"name": "Dara_BusinessPlan.pdf", "key": "Dara_BusinessPlan.pdf"}],
-        "tags": ["Business Plan", "Strategy"],
-    },
-    {
-        "id": "master",
-        "title": "Master Investor Deck",
-        "tagline": "All Projects - One Investor Package",
-        "description": "الحزمة الاستثمارية الكاملة: كل المشاريع + ملخص الاستثمار وAI Integration.",
-        "files": [{"name": "Master_Investor_Deck.pptx", "key": "Master_Investor_Deck.pptx"}],
-        "tags": ["Master", "All"],
-    },
-]
+def api_get(path: str):
+    url = f"{BACKEND_URL}{path}"
+    headers = {}
+    if st.session_state.access_token:
+        headers["Authorization"] = f"Bearer {st.session_state.access_token}"
+    with httpx.Client(timeout=8.0) as c:
+        r = c.get(url, headers=headers)
+        r.raise_for_status()
+        return r.json()
 
-# ---------- Session state ----------
-if "chat_lines" not in st.session_state:
-    st.session_state.chat_lines = [{"from": "system", "text": "مرحبًا بك في منصة المستثمر — اسألني عن أي مشروع."}]
-if "lang" not in st.session_state:
-    st.session_state.lang = "ar"
-if "query" not in st.session_state:
-    st.session_state.query = ""
-if "active_tags" not in st.session_state:
-    st.session_state.active_tags = []
-if "projects" not in st.session_state:
-    st.session_state.projects = initial_projects
-
-# ---------- Helpers ----------
-def get_signed_url(key: str):
-    """Resolve a file key to a URL using BACKEND_BASE or MOCK_DATA fallback."""
-    if not key:
-        return None
-    # Try backend first
-    if BACKEND_BASE:
+# Login form
+with st.form("login"):
+    st.subheader("Sign in")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+    submitted = st.form_submit_button("Sign in")
+    if submitted:
         try:
-            resp = requests.get(f"{BACKEND_BASE.rstrip('/')}/api/signed-url", params={"key": key}, timeout=6)
-            if resp.ok:
-                j = resp.json()
-                return j.get("url")
-        except Exception:
-            pass
-    return MOCK_DATA["signedUrls"].get(key) or f"https://example.com/files/{key}"
+            # backend expects form or JSON; here we send JSON
+            resp = api_post("/auth/token", {"username": username, "password": password})
+            token = resp.get("access_token")
+            if token:
+                st.session_state.access_token = token
+                st.success("Signed in successfully.")
+                # fetch current user
+                me = api_get("/auth/me")
+                st.session_state.user = me.get("user")
+                st.experimental_rerun()
+            else:
+                st.error("Login failed: no token returned.")
+        except Exception as e:
+            st.error(f"Login error: {e}")
+            logger.exception("Login failed")
 
+if st.session_state.user:
+    st.markdown(f"**Signed in as:** `{st.session_state.user.get('username')}` — role: `{st.session_state.user.get('role')}`")
+    if st.button("Sign out"):
+        st.session_state.access_token = None
+        st.session_state.user = None
+        st.experimental_rerun()
 
-def ai_reply_sync(message: str):
-    """Non-streaming reply: use OpenAI if available, otherwise mock."""
-    if OPENAI_API_KEY and OPENAI_AVAILABLE:
+# Example protected action
+st.header("Demo: Create instruction (requires auth)")
+if st.session_state.access_token:
+    txid = st.text_input("Transaction ID", value=f"TRX-{int(time.time())}")
+    amount = st.number_input("Amount", value=1250.75, format="%.2f")
+    if st.button("Create instruction"):
         try:
-            # Using chat completion (non-streaming)
-            res = openai.ChatCompletion.create(
-                model=os.environ.get("OPENAI_MODEL", "gpt-4o-mini"),
-                messages=[{"role":"user", "content": message}],
-                temperature=0.2,
-                max_tokens=800,
-            )
-            # Extract text safely
-            choices = res.get("choices", [])
-            if choices:
-                msg = choices[0].get("message") or {}
-                return msg.get("content") or choices[0].get("text") or MOCK_DATA["defaultReply"]
-            return MOCK_DATA["defaultReply"]
-        except Exception:
-            st.error("OpenAI request failed (check logs). Using mock reply.")
-            return MOCK_DATA["replies"].get(message.lower(), MOCK_DATA["defaultReply"])
-    else:
-        return MOCK_DATA["replies"].get(message.lower(), MOCK_DATA["defaultReply"])
+            payload = {"transaction_id": txid, "amount": float(amount), "currency": "USD", "beneficiary_account": "QNB-ACC-0001"}
+            resp = api_post("/v1/settlement/instructions", payload)
+            st.success("Instruction created.")
+            st.json(resp)
+        except Exception as e:
+            st.error(f"API error: {e}")
+else:
+    st.info("Sign in to perform actions.")
 
-
-def ai_reply_stream(message: str, placeholder):
-    """
-    Stream reply from OpenAI if available. Updates 'placeholder' with progressive text.
-    Returns the full final string.
-    """
-    if not (OPENAI_API_KEY and OPENAI_AVAILABLE):
-        # simulate streaming with mock lines
-        lines = [
-            "مرحبًا — هذا مثال للبث المباشر.",
-            "أعمل على تلخيص العرض...",
-            "النقطة الأولى: جاهزية تقنية.",
-            "النقطة الثانية: التكامل مع البنوك المحلية.",
-            "انتهى البث."
-        ]
-        full = ""
-        for ln in lines:
-            full += ln + "\n"
-            placeholder.markdown(full)
-            time.sleep(0.3)
-        return full
-
-    # Real OpenAI streaming
-    try:
-        stream = openai.ChatCompletion.create(
-            model=os.environ.get("OPENAI_MODEL", "gpt-4o-mini"),
-            messages=[{"role":"user","content":message}],
-            temperature=0.2,
-            stream=True,
-        )
-        full = ""
-        for chunk in stream:
-            # chunk may contain choices with delta
-            choices = chunk.get("choices", [])
-            if choices:
-                delta = choices[0].get("delta", {})
-                content = delta.get("content")
-                if content:
-                    full += content
-                    placeholder.markdown(full)
-        return full
-    except Exception:
-        st.error("Stream from OpenAI failed — falling back to sync.")
-        return ai_reply_sync(message)
-
-# ---------- UI Layout ----------
-col1, col2 =
+st.markdown("---")
+st.markdown("Backend URL: " + BACKEND_URL)
