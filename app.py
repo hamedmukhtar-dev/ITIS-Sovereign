@@ -1,643 +1,415 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>بوابة حجز السفر | TravelSmart</title>
-    <!-- Chosen Palette: Warm Neutrals (Gray/Stone) with Indigo Accent -->
-    <!-- Application Structure Plan: 
-        SPA (Single Page Application) مُدارة بـ JavaScript.
-        1.  ثلاث "طرق عرض" (Views) رئيسية في أقسام <div>: [search-view, results-view, booking-view].
-        2.  يبدأ المستخدم في 'search-view' (الرئيسية).
-        3.  البحث يخفي 'search-view' ويظهر 'results-view' مع النتائج المفلترة.
-        4.  يحتوي 'results-view' على مخطط أسعار (Chart.js) وفلاتر متقدمة (متطلبات 14, 22, 51).
-        5.  اختيار نتيجة يخفي 'results-view' ويظهر 'booking-view'.
-        6.  'booking-view' يعالج تفاصيل المسافر، الخدمات الإضافية، والسياسات (متطلبات 32, 33, 38).
-        7.  يتم تنفيذ متطلبات B2B (مثل عرض الرصيد 4، 5) في رأس الصفحة.
-        8.  هذا الهيكل يتبع مباشرة المخططات الانسيابية (Flowcharts) المقدمة في PDF.
-    -->
-    <!-- Visualization & Content Choices:
-        -   عرض التقويم (Req 14): Chart.js Bar Chart (Canvas) لعرض الأسعار على مدار 5 أيام.
-        -   فلاتر البحث (Req 22, 51): HTML sliders و checkboxes. التفاعل بـ JS لتصفية النتائج.
-        -   نتائج البحث (Req 19, 46): HTML/Tailwind list, يتم ملؤها ديناميكيًا بـ JS.
-        -   خدمات إضافية (Req 32): HTML divs تفاعلية (Modal/Popup) لاختيار المقاعد/الوجبات.
-        -   خرق السياسة (Req 38): Textarea تظهر/تختفي بـ JS.
-        -   خيارات الدفع (Req 36): Radio buttons بـ JS لإظهار حقول الدفع المناسبة.
-        -   تعبئة آلية (Req 33): JS يملأ الحقول من كائن mockUser.
-    -->
-    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
-
-    <!-- 1. تحميل Tailwind CSS -->
+    <title>Travel Booking Portal | TravelSmart</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 2. تحميل Chart.js (لتنفيذ متطلب 14: عرض الأسعار في التقويم) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <!-- 3. تخصيص خط Inter الافتراضي -->
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
-        body {
-            font-family: 'Cairo', sans-serif;
-            background-color: #f8fafc; /* bg-gray-50 */
-        }
-        /* (متطلب 14) تخصيص حاوية المخطط البياني لتكون متجاوبة ومحددة الارتفاع */
-        .chart-container {
-            position: relative;
-            width: 100%;
-            max-width: 900px; /* أقصى عرض للمخطط */
-            margin-left: auto;
-            margin-right: auto;
-            height: 200px; /* ارتفاع ثابت للمخطط */
-            max-height: 250px; /* أقصى ارتفاع */
-        }
-        /* إخفاء الأقسام افتراضيًا */
-        #results-view, #booking-view {
-            display: none;
-        }
+        body { font-family: 'Cairo', sans-serif; background-color: #f8fafc; }
+        .chart-container { position: relative; width: 100%; max-width: 900px; margin-left: auto; margin-right: auto; height: 200px; max-height: 250px; }
+        .hidden { display: none !important; }
+        #results-view, #booking-view { display: none; }
     </style>
 </head>
 <body class="bg-gray-50">
 
-    <!-- رأس الصفحة (Header) - يحتوي على متطلبات B2B -->
+    <!-- Header -->
     <header class="bg-white shadow-md">
         <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-            <div class="text-3xl font-extrabold text-indigo-700">
-                TravelSmart
-            </div>
-            <!-- (متطلبات 4, 5, 39) قسم خاص بالوكيل B2B -->
-            <div id="b2b-agent-section" class="space-x-4 rtl:space-x-reverse hidden">
-                <div class="text-sm">
-                    <span class="text-gray-600">الرصيد المتاح (متطلب 4):</span>
-                    <span id="agent-balance" class="font-bold text-green-600 text-lg">1,500 $</span>
+            <div id="app-title" class="text-3xl font-extrabold text-indigo-700">TravelSmart</div>
+            <div class="space-x-4 flex items-center">
+                <select id="language-selector" class="py-2 px-3 border border-gray-300 rounded-lg text-sm bg-white">
+                    <option value="ar">العربية (AR)</option>
+                    <option value="en" selected>English (EN)</option>
+                </select>
+                <div id="b2b-agent-section" class="space-x-4 hidden">
+                    <span class="text-sm"><span id="balance-label" class="text-gray-600">Balance:</span> <span id="agent-balance" class="font-bold text-green-600">1,500 $</span></span>
+                    <button id="recharge-btn" class="bg-yellow-500 text-white text-sm py-2 px-4 rounded-lg">Recharge</button>
                 </div>
-                <button id="recharge-btn" class="bg-yellow-500 text-white text-sm py-2 px-4 rounded-lg hover:bg-yellow-600 transition duration-150">
-                    إعادة شحن الرصيد (متطلب 5)
-                </button>
+                <button id="toggle-view-btn" class="bg-gray-200 text-gray-700 text-sm py-2 px-4 rounded-lg">Switch to B2B</button>
             </div>
-            <!-- زر تبديل B2C/B2B (لأغراض العرض) -->
-            <button id="toggle-view-btn" class="bg-gray-200 text-gray-700 text-sm py-2 px-4 rounded-lg">التبديل إلى B2B</button>
         </nav>
     </header>
 
-    <!-- رسالة تنبيه عامة -->
     <div id="alert-message" class="hidden max-w-7xl mx-auto mt-4 p-3 rounded-lg text-sm text-center"></div>
 
     <main class="max-w-7xl mx-auto p-4 sm:px-6 lg:px-8 mt-6">
-
-        <!-- =================================================================== -->
-        <!-- 1. واجهة البحث (Search View)                                        -->
-        <!-- =================================================================== -->
+        <!-- Search View -->
         <section id="search-view">
-            <!-- التبويبات -->
             <div class="mb-6 border-b border-gray-200">
-                <nav class="flex space-x-6 rtl:space-x-reverse" aria-label="Tabs">
-                    <button id="tab-flights" class="tab-btn px-3 py-2 font-bold text-lg border-b-4 border-indigo-600 text-indigo-700">
-                        ✈️ الطيران
-                    </button>
-                    <button id="tab-hotels" class="tab-btn px-3 py-2 font-bold text-lg text-gray-500 hover:text-indigo-700">
-                        🏨 الفنادق
-                    </button>
+                <nav class="flex space-x-6" aria-label="Tabs">
+                    <button id="tab-flights" class="tab-btn px-3 py-2 font-bold text-lg border-b-4 border-indigo-600 text-indigo-700" data-key="flightsTab">✈️ Flights</button>
+                    <button id="tab-hotels" class="tab-btn px-3 py-2 font-bold text-lg text-gray-500 hover:text-indigo-700" data-key="hotelsTab">🏨 Hotels</button>
                 </nav>
             </div>
 
-            <!-- نموذج بحث الطيران (متطلبات 6-12) -->
             <form id="flight-search-form" class="bg-white p-6 rounded-xl shadow-lg space-y-4">
-                <!-- (متطلب 6) نوع الرحلة -->
-                <div class="flex space-x-4 rtl:space-x-reverse">
-                    <label><input type="radio" name="tripType" value="oneway" class="ml-2 rtl:mr-2"> ذهاب فقط</label>
-                    <label><input type="radio" name="tripType" value="return" checked class="ml-2 rtl:mr-2"> ذهاب وعودة</label>
-                    <label><input type="radio" name="tripType" value="multicity" class="ml-2 rtl:mr-2"> مدن متعددة</label>
+                <div class="flex space-x-4">
+                    <label><input type="radio" name="tripType" value="oneway" class="mr-2"><span data-key="oneWay"> One Way</span></label>
+                    <label><input type="radio" name="tripType" value="return" checked class="mr-2"><span data-key="roundTrip"> Round Trip</span></label>
+                    <label><input type="radio" name="tripType" value="multicity" class="mr-2"><span data-key="multiCity"> Multi-City</span></label>
                 </div>
-                <!-- (متطلبات 8, 9, 10) المدن والتواريخ -->
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <input id="flight-origin" type="text" placeholder="المغادرة من (متطلب 8)" class="form-input border border-gray-300 p-3 rounded-lg">
-                    <input id="flight-dest" type="text" placeholder="الوصول إلى (متطلب 10)" class="form-input border border-gray-300 p-3 rounded-lg">
-                    <input id="flight-departure" type="date" placeholder="تاريخ المغادرة (متطلب 9)" class="form-input border border-gray-300 p-3 rounded-lg">
-                    <input id="flight-return" type="date" placeholder="تاريخ العودة" class="form-input border border-gray-300 p-3 rounded-lg">
+                    <input id="flight-origin" type="text" placeholder="Origin" class="form-input border border-gray-300 p-3 rounded-lg" data-placeholder-key="originPlaceholder">
+                    <input id="flight-dest" type="text" placeholder="Destination" class="form-input border border-gray-300 p-3 rounded-lg" data-placeholder-key="destinationPlaceholder">
+                    <input id="flight-departure" type="date" placeholder="Departure Date" class="form-input border border-gray-300 p-3 rounded-lg" data-placeholder-key="departureDatePlaceholder">
+                    <input id="flight-return" type="date" placeholder="Return Date" class="form-input border border-gray-300 p-3 rounded-lg" data-placeholder-key="returnDatePlaceholder">
                 </div>
-                <!-- (متطلبات 11, 12) الدرجة والناقل -->
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <input type="number" placeholder="المسافرون (1)" class="form-input border border-gray-300 p-3 rounded-lg">
-                    <select class="form-select border border-gray-300 p-3 rounded-lg"> <!-- (متطلب 11) -->
-                        <option value="Economy">الدرجة السياحية</option>
-                        <option value="Business">درجة رجال الأعمال</option>
-                    </select>
-                    <select class="form-select border border-gray-300 p-3 rounded-lg"> <!-- (متطلب 12) -->
-                        <option value="">أي ناقل</option>
-                        <option value="EK">Emirates (EK)</option>
-                        <option value="SV">Saudia (SV)</option>
-                        <option value="QR">Qatar Airways (QR)</option>
-                    </select>
-                    <button type="submit" class="w-full bg-indigo-600 text-white text-lg font-bold py-3 rounded-lg shadow-xl hover:bg-indigo-700 transition">
-                        بحث
-                    </button>
+                    <input type="number" placeholder="Passengers (1)" class="form-input border border-gray-300 p-3 rounded-lg" data-placeholder-key="passengersPlaceholder">
+                    <select class="form-select border border-gray-300 p-3 rounded-lg"><option value="Economy" data-key="economyClass">Economy</option><option value="Business" data-key="businessClass">Business</option></select>
+                    <select class="form-select border border-gray-300 p-3 rounded-lg"><option value="" data-key="anyCarrier">Any Carrier</option><option value="EK">Emirates (EK)</option></select>
+                    <button type="submit" class="w-full bg-indigo-600 text-white text-lg font-bold py-3 rounded-lg shadow-xl hover:bg-indigo-700 transition" data-key="searchButton">Search</button>
                 </div>
             </form>
 
-            <!-- نموذج بحث الفنادق (متطلبات 40-44) -->
             <form id="hotel-search-form" class="hidden bg-white p-6 rounded-xl shadow-lg space-y-4">
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <input type="text" placeholder="المدينة أو اسم الفندق (متطلب 40)" class="md:col-span-2 form-input border border-gray-300 p-3 rounded-lg">
-                    <input type="date" placeholder="تاريخ الوصول" class="form-input border border-gray-300 p-3 rounded-lg">
-                    <input type="date" placeholder="تاريخ المغادرة" class="form-input border border-gray-300 p-3 rounded-lg">
+                    <input type="text" placeholder="City or Hotel Name" class="md:col-span-2 form-input border border-gray-300 p-3 rounded-lg" data-placeholder-key="cityHotelPlaceholder">
+                    <input type="date" placeholder="Check-in" class="form-input border border-gray-300 p-3 rounded-lg" data-placeholder-key="checkInPlaceholder">
+                    <input type="date" placeholder="Check-out" class="form-input border border-gray-300 p-3 rounded-lg" data-placeholder-key="checkOutPlaceholder">
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <select class="form-select border border-gray-300 p-3 rounded-lg"> <!-- (متطلب 43) -->
-                        <option value="SA">الجنسية: سعودي</option>
-                        <option value="EG">الجنسية: مصري</option>
-                    </select>
-                    <input type="number" placeholder="عدد الغرف (متطلب 44)" value="1" class="form-input border border-gray-300 p-3 rounded-lg">
-                    <input type="number" placeholder="البالغون" value="2" class="form-input border border-gray-300 p-3 rounded-lg">
-                    <button type="submit" class="w-full bg-indigo-600 text-white text-lg font-bold py-3 rounded-lg shadow-xl hover:bg-indigo-700 transition">
-                        بحث
-                    </button>
+                    <select class="form-select border border-gray-300 p-3 rounded-lg"><option value="SA" data-key="nationalitySaudi">Nationality: Saudi</option></select>
+                    <input type="number" placeholder="Rooms" value="1" class="form-input border border-gray-300 p-3 rounded-lg" data-placeholder-key="roomsPlaceholder">
+                    <input type="number" placeholder="Adults" value="2" class="form-input border border-gray-300 p-3 rounded-lg" data-placeholder-key="adultsPlaceholder">
+                    <button type="submit" class="w-full bg-indigo-600 text-white text-lg font-bold py-3 rounded-lg shadow-xl hover:bg-indigo-700 transition" data-key="searchButton">Search</button>
                 </div>
             </form>
         </section>
 
-        <!-- =================================================================== -->
-        <!-- 2. واجهة النتائج (Results View)                                     -->
-        <!-- =================================================================== -->
+        <!-- Results View -->
         <section id="results-view" class="hidden">
-            <button id="back-to-search-1" class="mb-4 text-indigo-600 hover:underline">&larr; العودة للبحث</button>
+            <button id="back-to-search-1" class="mb-4 text-indigo-600 hover:underline" data-key="backToSearch">&larr; Back to Search</button>
             <div class="grid grid-cols-12 gap-6">
-                
-                <!-- المرشحات (Filters) -->
                 <aside class="col-span-12 lg:col-span-3">
                     <div id="filters-container" class="bg-white p-6 rounded-xl shadow-lg space-y-6">
-                        <h3 class="text-xl font-bold text-gray-800 border-b pb-2">تصفية النتائج</h3>
-                        
-                        <!-- (متطلب 22) مرشحات الطيران -->
+                        <h3 class="text-xl font-bold text-gray-800 border-b pb-2" data-key="filterResults">Filter Results</h3>
                         <div id="flight-filters" class="space-y-4">
-                            <div>
-                                <label class="font-semibold">السعر (متطلب 22)</label>
-                                <input type="range" min="100" max="2000" class="w-full">
-                            </div>
-                            <div>
-                                <label class="font-semibold">التوقفات (متطلب 22)</label>
-                                <div class="space-y-1 mt-2">
-                                    <label class="flex items-center"><input type="checkbox" checked class="ml-2 rtl:mr-2"> مباشر</label>
-                                    <label class="flex items-center"><input type="checkbox" checked class="ml-2 rtl:mr-2"> توقف واحد</label>
-                                </div>
-                            </div>
-                            <div>
-                                <label class="font-semibold">قابلية الاسترداد (متطلب 22)</label>
-                                <div class="space-y-1 mt-2">
-                                    <label class="flex items-center"><input type="checkbox" class="ml-2 rtl:mr-2"> قابل للاسترداد فقط</label>
-                                </div>
-                            </div>
+                            <div><label class="font-semibold" data-key="priceFilter">Price</label><input type="range" min="100" max="2000" class="w-full"></div>
+                            <div><label class="font-semibold" data-key="stopsFilter">Stops</label><div class="space-y-1 mt-2"><label class="flex items-center"><input type="checkbox" checked class="mr-2"><span data-key="directFlight"> Direct</span></label></div></div>
                         </div>
-
-                        <!-- (متطلب 51) مرشحات الفنادق -->
                         <div id="hotel-filters" class="hidden space-y-4">
-                            <div>
-                                <label class="font-semibold">تقييم النجوم (متطلب 51)</label>
-                                <div class="flex justify-between text-lg text-yellow-500">
-                                    <span>⭐</span> <span>⭐⭐</span> <span>⭐⭐⭐</span> <span>⭐⭐⭐⭐</span> <span>⭐⭐⭐⭐⭐</span>
-                                </div>
-                                <input type="range" min="1" max="5" value="3" class="w-full">
-                            </div>
-                            <div>
-                                <label class="font-semibold">المرافق (متطلب 51)</label>
-                                <div class="space-y-1 mt-2">
-                                    <label class="flex items-center"><input type="checkbox" class="ml-2 rtl:mr-2"> واي فاي مجاني</label>
-                                    <label class="flex items-center"><input type="checkbox" class="ml-2 rtl:mr-2"> مسبح</label>
-                                </div>
-                            </div>
+                            <div><label class="font-semibold" data-key="starRatingFilter">Star Rating</label><input type="range" min="1" max="5" value="3" class="w-full"></div>
                         </div>
-
-                        <!-- (متطلب 16) رسوم المناولة -->
-                        <div class="border-t pt-4">
-                            <label class="flex items-center text-sm"><input type="checkbox" id="handling-fee-toggle" checked class="ml-2 rtl:mr-2"> عرض السعر شامل رسوم المناولة</label>
-                        </div>
-
+                        <div class="border-t pt-4"><label class="flex items-center text-sm"><input type="checkbox" id="handling-fee-toggle" checked class="mr-2"><span data-key="showFees"> Show Price Incl. Handling Fees</span></label></div>
                     </div>
                 </aside>
-                
-                <!-- قائمة النتائج -->
-                <div class="col-span-12 lg:col-span-9 space-y-6">
-                    
-                    <!-- (متطلب 14) عرض أسعار التقويم -->
-                    <div class="bg-white p-4 rounded-xl shadow-lg">
-                        <h4 class="text-center font-bold mb-2">عرض أسعار التقويم (متطلب 14)</h4>
-                        <div class="chart-container">
-                            <canvas id="fareCalendarChart"></canvas>
-                        </div>
-                    </div>
 
-                    <!-- (متطلب 21) تحميل Excel -->
-                    <div class="flex justify-end">
-                        <button id="download-excel-btn" class="bg-green-600 text-white text-sm py-2 px-4 rounded-lg hover:bg-green-700 transition">
-                            تحميل النتائج (Excel) (متطلب 21)
-                        </button>
+                <div class="col-span-12 lg:col-span-9 space-y-6">
+                    <div class="bg-white p-4 rounded-xl shadow-lg">
+                        <h4 class="text-center font-bold mb-2" data-key="fareCalendar">Fare Calendar View</h4>
+                        <div class="chart-container"><canvas id="fareCalendarChart"></canvas></div>
                     </div>
-                    
-                    <!-- بطاقة نتيجة (عينة) -->
+                    <div class="flex justify-end">
+                        <button id="download-excel-btn" class="bg-green-600 text-white text-sm py-2 px-4 rounded-lg hover:bg-green-700 transition" data-key="downloadExcel">⬇️ Download Results (Excel)</button>
+                    </div>
                     <div id="results-list" class="space-y-4">
-                        <!-- عينة بطاقة طيران -->
-                        <div class="bg-white p-4 rounded-xl shadow-lg flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-4 rtl:md:space-x-reverse">
+                        <div class="bg-white p-4 rounded-xl shadow-lg flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-4">
                             <img src="https://placehold.co/100x50/0d9488/FFFFFF?text=Airline" alt="Airline" class="rounded">
                             <div class="flex-1">
-                                <p class="text-lg font-bold">طيران الإمارات (EK)</p>
+                                <p class="text-lg font-bold">Emirates (EK)</p>
                                 <p class="text-sm">08:00 (RUH) &larr; 11:30 (DXB)</p>
-                                <p class="text-xs text-gray-500">مباشر | 2س 30د</p>
+                                <p class="text-xs text-gray-500" data-key="directDuration">Direct | 2h 30m</p>
                             </div>
                             <div class="text-sm">
-                                <p class="font-semibold">الأمتعة: 25 كج (متطلب 27)</p>
-                                <p class="text-green-600">قابل للاسترداد (متطلب 27)</p>
-                                <a href="#" class="text-indigo-600 text-xs hover:underline">عرض قواعد الأجرة (متطلب 24)</a>
+                                <p class="font-semibold" data-key="baggage">Baggage: 25 kg</p>
+                                <p class="text-green-600" data-key="refundable">Refundable</p>
+                                <a href="#" class="text-indigo-600 text-xs hover:underline" data-key="viewFareRules">View Fare Rules</a>
                             </div>
-                            <div class="text-center md:text-right">
-                                <p class="text-2xl font-extrabold text-indigo-700">950 $</p>
-                                <button class="book-now-btn w-full md:w-auto bg-indigo-600 text-white py-2 px-6 rounded-lg font-semibold hover:bg-indigo-700 transition">
-                                    احجز الآن
-                                </button>
-                            </div>
-                        </div>
-                        <!-- عينة بطاقة فندق -->
-                        <div class="bg-white p-4 rounded-xl shadow-lg flex items-center space-x-4 rtl:space-x-reverse hidden">
-                             <img src="https://placehold.co/100x100/4f46e5/FFFFFF?text=Hotel" alt="Hotel" class="w-24 h-24 object-cover rounded-lg">
-                             <div class="flex-1">
-                                <p class="text-lg font-bold">فندق جراند بلازا (متطلب 47)</p>
-                                <p class="text-yellow-500">⭐⭐⭐⭐⭐ (متطلب 49)</p>
-                                <p class="text-sm text-gray-600">وسط المدينة (متطلب 48)</p>
-                                <a href="#" class="text-indigo-600 text-xs hover:underline">عرض الخريطة والمرافق (متطلب 59, 58)</a>
-                             </div>
-                             <div class="text-right">
-                                <p class="text-2xl font-extrabold text-indigo-700">220 $ / لليلة</p>
-                                <p class="text-sm text-gray-500">الإجمالي لـ 3 ليالي: 660 $</p>
-                                <button class="book-now-btn w-full bg-indigo-600 text-white py-2 px-6 rounded-lg font-semibold hover:bg-indigo-700 transition mt-2">
-                                    احجز الآن
-                                </button>
-                             </div>
+                            <div class="text-center md:text-right"><p class="text-2xl font-extrabold text-indigo-700">950 $</p><button class="book-now-btn w-full md:w-auto bg-indigo-600 text-white py-2 px-6 rounded-lg font-semibold hover:bg-indigo-700 transition" data-key="bookNow">Book Now</button></div>
                         </div>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- =================================================================== -->
-        <!-- 3. واجهة الحجز والدفع (Booking View)                               -->
-        <!-- =================================================================== -->
+        <!-- Booking View -->
         <section id="booking-view" class="hidden">
-            <button id="back-to-results-1" class="mb-4 text-indigo-600 hover:underline">&larr; العودة للنتائج</button>
-            <h2 class="text-2xl font-extrabold text-gray-800 mb-6">مراجعة الحجز والدفع (متطلب 31, 34)</h2>
-            
+            <button id="back-to-results-1" class="mb-4 text-indigo-600 hover:underline" data-key="backToResults">&larr; Back to Results</button>
+            <h2 class="text-2xl font-extrabold text-gray-800 mb-6" data-key="bookingReview">Booking Review and Payment</h2>
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <!-- تفاصيل الحجز -->
                 <div class="lg:col-span-2 space-y-6">
-                    <!-- (متطلب 33) تعبئة بيانات المسافر -->
                     <div class="bg-white p-6 rounded-xl shadow-lg">
-                        <h3 class="text-xl font-bold mb-4">بيانات المسافر (تعبئة تلقائية)</h3>
+                        <h3 class="text-xl font-bold mb-4" data-key="travelerDetails">Traveler Details</h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <input type="text" id="pass-name" placeholder="الاسم الكامل" class="form-input border border-gray-300 p-3 rounded-lg bg-gray-100">
-                            <input type="text" id="pass-nat" placeholder="الجنسية" class="form-input border border-gray-300 p-3 rounded-lg bg-gray-100">
-                            <input type="email" id="pass-email" placeholder="البريد الإلكتروني (متطلب 70)" class="form-input border border-gray-300 p-3 rounded-lg">
-                            <input type="tel" id="pass-tel" placeholder="رقم الجوال (متطلب 71)" class="form-input border border-gray-300 p-3 rounded-lg">
+                            <input type="text" id="pass-name" placeholder="Full Name" class="form-input border border-gray-300 p-3 rounded-lg bg-gray-100" data-placeholder-key="fullNamePlaceholder">
+                            <input type="email" id="pass-email" placeholder="Email" class="form-input border border-gray-300 p-3 rounded-lg" data-placeholder-key="emailPlaceholder">
                         </div>
                     </div>
-                    
-                    <!-- (متطلب 32) الخدمات الإضافية -->
                     <div class="bg-white p-6 rounded-xl shadow-lg">
-                        <h3 class="text-xl font-bold mb-4">الخدمات الإضافية (متطلب 32)</h3>
-                        <div class="flex space-x-4 rtl:space-x-reverse">
-                            <button id="select-seat-btn" class="flex-1 bg-blue-100 text-blue-700 py-3 rounded-lg font-semibold hover:bg-blue-200">اختيار المقعد</button>
-                            <button id="select-meal-btn" class="flex-1 bg-blue-100 text-blue-700 py-3 rounded-lg font-semibold hover:bg-blue-200">اختيار الوجبة</button>
-                            <button id="select-bag-btn" class="flex-1 bg-blue-100 text-blue-700 py-3 rounded-lg font-semibold hover:bg-blue-200">إضافة أمتعة</button>
+                        <h3 class="text-xl font-bold mb-4" data-key="ancillaryServices">Ancillary Services</h3>
+                        <div class="flex space-x-4">
+                            <button id="select-seat-btn" class="flex-1 bg-blue-100 text-blue-700 py-3 rounded-lg font-semibold hover:bg-blue-200" data-key="selectSeat">Select Seat</button>
+                            <button id="select-meal-btn" class="flex-1 bg-blue-100 text-blue-700 py-3 rounded-lg font-semibold hover:bg-blue-200" data-key="selectMeal">Select Meal</button>
+                            <button id="select-bag-btn" class="flex-1 bg-blue-100 text-blue-700 py-3 rounded-lg font-semibold hover:bg-blue-200" data-key="addBaggage">Add Baggage</button>
                         </div>
                     </div>
-                    
-                    <!-- (متطلب 38) خرق السياسة -->
                     <div id="policy-breach-section" class="hidden bg-red-100 p-6 rounded-xl shadow-lg border border-red-300">
-                        <h3 class="text-xl font-bold text-red-700 mb-2">تنبيه: تجاوز سياسة الشركة! (متطلب 38)</h3>
-                        <p class="text-sm text-red-600 mb-4">هذه الرحلة خارج معايير السعر المحددة. يرجى ذكر السبب لتقارير MIS.</p>
-                        <textarea id="policy-reason" placeholder="اكتب سبب الاختيار هنا..." class="w-full p-3 border border-red-300 rounded-lg" rows="3"></textarea>
-                    </div>
-
-                </div>
-                
-                <!-- ملخص الدفع -->
-                <div class="lg:col-span-1 space-y-6">
-                    <!-- ملخص السعر -->
-                    <div class="bg-gray-100 p-6 rounded-xl shadow-inner">
-                        <h3 class="text-xl font-bold mb-4">ملخص السعر</h3>
-                        <div class="space-y-2 text-sm">
-                            <div class="flex justify-between"><span>السعر الأساسي</span> <span id="price-base">900 $</span></div>
-                            <div class="flex justify-between"><span>الضرائب (متطلب 35)</span> <span id="price-tax">50 $</span></div>
-                            <div class="flex justify-between border-b pb-2"><span>رسوم المناولة</span> <span id="price-fee">25 $</span></div>
-                            <div class="flex justify-between text-xl font-bold pt-2"><span>الإجمالي</span> <span id="price-total" class="text-indigo-700">975 $</span></div>
-                        </div>
-                    </div>
-                    
-                    <!-- (متطلب 37, 72) العروض الترويجية -->
-                    <div class="bg-white p-4 rounded-xl shadow-lg">
-                        <label for="promo-code" class="text-sm font-semibold">رمز ترويجي (متطلب 37)</label>
-                        <div class="flex mt-2">
-                            <input type="text" id="promo-code" placeholder="أدخل الرمز" class="flex-1 border border-gray-300 p-2 rounded-l-lg">
-                            <button id="apply-promo" class="bg-gray-700 text-white px-4 rounded-r-lg hover:bg-gray-800">تطبيق</button>
-                        </div>
-                    </div>
-                    
-                    <!-- (متطلب 36) خيارات الدفع -->
-                    <div class="bg-white p-6 rounded-xl shadow-lg">
-                        <h3 class="text-xl font-bold mb-4">اختر طريقة الدفع (متطلب 36)</h3>
+                        <h3 class="text-xl font-bold text-red-700 mb-2" data-key="policyBreachTitle">Policy Breach Alert</h3>
+                        <p class="text-sm text-red-700 mb-3">تجاوز سياسة الشركة: هناك حاجة لسبب قبل الموافقة.</p>
                         <div class="space-y-3">
-                            <label class="flex items-center p-3 border rounded-lg"><input type="radio" name="payment" value="card" checked class="ml-3 rtl:mr-3"> بطاقة ائتمان / مدين</label>
-                            <label class="flex items-center p-3 border rounded-lg"><input type="radio" name="payment" value="netbanking" class="ml-3 rtl:mr-3"> خدمات بنكية (Net Banking)</label>
-                            <label id="payment-deposit-option" class="hidden flex items-center p-3 border rounded-lg"><input type="radio" name="payment" value="deposit" class="ml-3 rtl:mr-3"> خصم من رصيد الوديعة</label>
+                            <label class="text-sm font-semibold">اختر سبباً سريعاً</label>
+                            <div class="flex space-x-2">
+                                <button type="button" class="policy-template-btn px-3 py-2 bg-white border rounded" data-template="Business critical">Business critical</button>
+                                <button type="button" class="policy-template-btn px-3 py-2 bg-white border rounded" data-template="Customer request">Customer request</button>
+                                <button type="button" class="policy-template-btn px-3 py-2 bg-white border rounded" data-template="Price match">Price match</button>
+                            </div>
+                            <label class="text-sm font-semibold">أو اكتب السبب</label>
+                            <textarea id="policy-reason" placeholder="Enter reason for out-of-policy selection..." class="w-full p-3 border border-red-300 rounded-lg" rows="3" data-placeholder-key="policyReasonPlaceholder"></textarea>
                         </div>
                     </div>
+                </div>
 
-                    <button id="confirm-booking-btn" class="w-full bg-green-600 text-white text-xl font-extrabold py-4 rounded-xl shadow-2xl hover:bg-green-700 transition">
-                        تأكيد الحجز والدفع
-                    </button>
+                <div class="lg:col-span-1 space-y-6">
+                    <div class="bg-gray-100 p-6 rounded-xl shadow-inner"><h3 class="text-xl font-bold mb-4" data-key="priceSummary">Price Summary</h3><div class="space-y-2 text-sm"><div class="flex justify-between"><span>Total</span> <span id="price-total" class="text-indigo-700">975 $</span></div></div></div>
+                    <div class="bg-white p-4 rounded-xl shadow-lg"><label for="promo-code" class="text-sm font-semibold" data-key="promoCode">Promo Code</label><div class="flex mt-2"><input type="text" id="promo-code" class="flex-1 border border-gray-300 p-2 rounded-l-lg" data-placeholder-key="promoPlaceholder"><button id="apply-promo" class="bg-gray-700 text-white px-4 rounded-r-lg hover:bg-gray-800" data-key="applyButton">Apply</button></div></div>
+                    <div class="bg-white p-6 rounded-xl shadow-lg"><h3 class="text-xl font-bold mb-4" data-key="choosePayment">Choose Payment Method</h3><div class="space-y-3"><label class="flex items-center p-3 border rounded-lg"><input type="radio" name="payment" value="card" checked class="mr-3"><span data-key="cardPayment"> Credit/Debit Card</span></label><label id="payment-deposit-option" class="hidden flex items-center p-3 border rounded-lg"><input type="radio" name="payment" value="deposit" class="mr-3"><span data-key="depositPayment"> Deposit Balance</span></label></div></div>
+                    <button id="confirm-booking-btn" class="w-full bg-green-600 text-white text-xl font-extrabold py-4 rounded-xl shadow-2xl hover:bg-green-700 transition" data-key="confirmPayButton">Confirm Booking & Pay</button>
                 </div>
             </div>
         </section>
-
     </main>
 
-    <!-- (متطلب 23) شريط الرحلة المختارة -->
     <footer id="selected-flight-bar" class="hidden fixed bottom-0 left-0 right-0 bg-indigo-900 text-white p-4 shadow-2xl-top z-50">
-        <div class="max-w-7xl mx-auto flex justify-between items-center">
-            <div>
-                <p class="font-bold">الرحلة المختارة: طيران الإمارات (RUH &larr; DXB)</p>
-                <p class="text-sm text-indigo-200">الإجمالي: 975 $ (شامل الرسوم)</p>
-            </div>
-            <button id="footer-book-btn" class="bg-green-500 text-white py-2 px-6 rounded-lg font-semibold hover:bg-green-600 transition">
-                متابعة
-            </button>
-        </div>
+        <div class="max-w-7xl mx-auto flex justify-between items-center"><p class="font-bold" id="selected-flight-text">Selected Flight: Emirates</p><button id="footer-book-btn" class="bg-green-500 text-white py-2 px-6 rounded-lg font-semibold" data-key="proceedButton">Proceed</button></div>
     </footer>
 
-
-    <!-- =================================================================== -->
-    <!-- JavaScript Logic                                                    -->
-    <!-- =================================================================== -->
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
+        // Localization
+        const L10N = {
+            en: {
+                appTitle: 'TravelSmart', flightsTab: '✈️ Flights', hotelsTab: '🏨 Hotels', oneWay: 'One Way', roundTrip: 'Round Trip', multiCity: 'Multi-City', searchButton: 'Search', backToSearch: 'Back to Search', filterResults: 'Filter Results', priceFilter: 'Price', stopsFilter: 'Stops', directFlight: 'Direct', showFees: 'Show Price Incl. Handling Fees', fareCalendar: 'Fare Calendar View', downloadExcel: '⬇️ Download Results (Excel)', bookNow: 'Book Now', backToResults: 'Back to Results', bookingReview: 'Booking Review and Payment', travelerDetails: 'Traveler Details', ancillaryServices: 'Ancillary Services', selectSeat: 'Select Seat', selectMeal: 'Select Meal', addBaggage: 'Add Baggage', policyBreachTitle: 'Policy Breach Alert', priceSummary: 'Price Summary', promoCode: 'Promo Code', applyButton: 'Apply', choosePayment: 'Choose Payment Method', cardPayment: 'Credit/Debit Card', depositPayment: 'Deposit Balance', confirmPayButton: 'Confirm Booking & Pay', balanceLabel: 'Balance:', toggleToB2B: 'Switch to B2B', toggleToB2C: 'Switch to B2C', rechargeBtn: 'Recharge', originPlaceholder: 'Origin', destinationPlaceholder: 'Destination', departureDatePlaceholder: 'Departure Date', returnDatePlaceholder: 'Return Date', passengersPlaceholder: 'Passengers (1)', economyClass: 'Economy', businessClass: 'Business', anyCarrier: 'Any Carrier', cityHotelPlaceholder: 'City or Hotel Name', checkInPlaceholder: 'Check-in', checkOutPlaceholder: 'Check-out', nationalitySaudi: 'Nationality: Saudi', roomsPlaceholder: 'Rooms', adultsPlaceholder: 'Adults', fullNamePlaceholder: 'Full Name', emailPlaceholder: 'Email', policyReasonPlaceholder: 'Enter reason for out-of-policy selection...', promoPlaceholder: 'Enter Promo Code...', policyReasonError: 'Error: Reason for out-of-policy selection is mandatory.', bookingPendingError: 'Error: Booking is pending with the carrier. Please try again.', bookingSuccess: 'Booking confirmed successfully! Ticket will be emailed.'
+            },
+            ar: {
+                appTitle: 'ترافل سمارت', flightsTab: '✈️ الطيران', hotelsTab: '🏨 الفنادق', oneWay: 'ذهاب فقط', roundTrip: 'ذهاب وعودة', multiCity: 'مدن متعددة', searchButton: 'بحث', backToSearch: 'العودة للبحث', filterResults: 'تصفية النتائج', priceFilter: 'السعر', stopsFilter: 'التوقفات', directFlight: 'مباشر', showFees: 'عرض السعر شامل رسوم المناولة', fareCalendar: 'عرض أسعار التقويم', downloadExcel: '⬇️ تحميل النتائج (Excel)', bookNow: 'احجز الآن', backToResults: 'العودة للنتائج', bookingReview: 'مراجعة الحجز والدفع', travelerDetails: 'بيانات المسافر', ancillaryServices: 'الخدمات الإضافية', selectSeat: 'اختيار المقعد', selectMeal: 'اختيار الوجبة', addBaggage: 'إضافة أمتعة', policyBreachTitle: 'تنبيه: تجاوز سياسة الشركة', priceSummary: 'ملخص السعر', promoCode: 'رمز ترويجي', applyButton: 'تطبيق', choosePayment: 'اختر طريقة الدفع', cardPayment: 'بطاقة ائتمان / مدين', depositPayment: 'خصم من رصيد الوديعة', confirmPayButton: 'تأكيد الحجز والدفع', balanceLabel: 'الرصيد:', toggleToB2B: 'التبديل إلى B2B', toggleToB2C: 'التبديل إلى B2C', rechargeBtn: 'إعادة شحن', originPlaceholder: 'المغادرة من', destinationPlaceholder: 'الوصول إلى', departureDatePlaceholder: 'تاريخ المغادرة', returnDatePlaceholder: 'تاريخ العودة', passengersPlaceholder: 'المسافرون (1)', economyClass: 'الدرجة السياحية', businessClass: 'درجة رجال الأعمال', anyCarrier: 'أي ناقل', cityHotelPlaceholder: 'المدينة أو اسم الفندق', checkInPlaceholder: 'تاريخ الوصول', checkOutPlaceholder: 'تاريخ المغادرة', nationalitySaudi: 'الجنسية: سعودي', roomsPlaceholder: 'الغرف', adultsPlaceholder: 'البالغون', fullNamePlaceholder: 'الاسم الكامل', emailPlaceholder: 'البريد الإلكتروني', policyReasonPlaceholder: 'اكتب سبب الاختيار هنا...', promoPlaceholder: 'أدخل الرمز الترويجي...', policyReasonError: 'خطأ: يجب تحديد سبب اختيار رحلة خارج سياسة الشركة.', bookingPendingError: 'خطأ: الحجز معلق لدى الناقل. يرجى المحاولة مرة أخرى.', bookingSuccess: 'تم تأكيد الحجز بنجاح! سيتم إرسال التذكرة.'
+            }
+        };
 
-            // --- حالة التطبيق الرئيسية ---
-            let appState = {
-                currentView: 'search', // search, results, booking
-                searchType: 'flights', // flights, hotels
-                isAgentView: false, // B2B vs B2C
-                mockUser: { // (متطلب 33)
-                    name: "عبدالله العلي",
-                    nationality: "SA",
-                    email: "a.ali@example.com",
-                    tel: "0501234567"
-                },
-                mockAgent: { // (متطلب 4)
-                    balance: 1500,
-                    creditLimit: 2000,
-                    lowBalanceThreshold: 500 // (متطلب 39)
-                },
-                selectedResult: null,
-                handlingFee: 25 // (متطلب 16)
+        function t(key, lang) {
+            if (!key) return '';
+            if (!L10N[lang]) return key;
+            return L10N[lang][key] || key;
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            var appState = {
+                currentView: 'search', searchType: 'flights', isAgentView: false, mockUser: { name: 'John Doe', email: 'john.doe@example.com' }, mockAgent: { balance: 1500, lowBalanceThreshold: 500 }, selectedResult: null, handlingFee: 25, currentLang: 'en'
             };
 
-            // --- جلب عناصر الواجهة (DOM Elements) ---
-            const views = {
-                search: document.getElementById('search-view'),
-                results: document.getElementById('results-view'),
-                booking: document.getElementById('booking-view')
-            };
-            const tabs = {
-                flights: document.getElementById('tab-flights'),
-                hotels: document.getElementById('tab-hotels')
-            };
-            const forms = {
-                flights: document.getElementById('flight-search-form'),
-                hotels: document.getElementById('hotel-search-form')
-            };
-            const filters = {
-                flights: document.getElementById('flight-filters'),
-                hotels: document.getElementById('hotel-filters')
-            };
-            const agentUI = {
-                section: document.getElementById('b2b-agent-section'),
-                balance: document.getElementById('agent-balance'),
-                depositOption: document.getElementById('payment-deposit-option'),
-                toggleBtn: document.getElementById('toggle-view-btn'),
-                rechargeBtn: document.getElementById('recharge-btn')
-            };
-            const bookingForm = {
-                name: document.getElementById('pass-name'),
-                nat: document.getElementById('pass-nat'),
-                email: document.getElementById('pass-email'),
-                tel: document.getElementById('pass-tel')
-            };
-            const policySection = document.getElementById('policy-breach-section');
-            const alertMsg = document.getElementById('alert-message');
-            const selectedFlightBar = document.getElementById('selected-flight-bar');
-            
-            // --- دوال التنقل بين الواجهات (SPA Navigation) ---
-            function showView(viewName) {
-                appState.currentView = viewName;
-                Object.values(views).forEach(v => v.style.display = 'none');
+            var langSelector = document.getElementById('language-selector');
+            var views = { search: document.getElementById('search-view'), results: document.getElementById('results-view'), booking: document.getElementById('booking-view') };
+            var tabs = { flights: document.getElementById('tab-flights'), hotels: document.getElementById('tab-hotels') };
+            var forms = { flights: document.getElementById('flight-search-form'), hotels: document.getElementById('hotel-search-form') };
+            var filters = { flights: document.getElementById('flight-filters'), hotels: document.getElementById('hotel-filters') };
+            var agentUI = { section: document.getElementById('b2b-agent-section'), depositOption: document.getElementById('payment-deposit-option'), toggleBtn: document.getElementById('toggle-view-btn') };
+            var policySection = document.getElementById('policy-breach-section');
+            var alertMsg = document.getElementById('alert-message');
+            var selectedFlightBar = document.getElementById('selected-flight-bar');
+
+            function showView(name) {
+                appState.currentView = name;
+                Object.keys(views).forEach(function (k) { if (views[k]) views[k].style.display = 'none'; });
                 selectedFlightBar.style.display = 'none';
-
-                if (views[viewName]) {
-                    views[viewName].style.display = 'block';
-                }
-                if (viewName === 'results' && appState.selectedResult) {
-                    selectedFlightBar.style.display = 'flex'; // (متطلب 23)
-                }
+                if (views[name]) views[name].style.display = 'block';
             }
 
-            // --- دوال تبديل العرض (B2B/B2C) ---
             function toggleAgentView() {
                 appState.isAgentView = !appState.isAgentView;
                 if (appState.isAgentView) {
                     agentUI.section.style.display = 'flex';
-                    agentUI.depositOption.style.display = 'flex';
-                    agentUI.toggleBtn.textContent = 'التبديل إلى B2C';
-                    // (متطلب 39) التحقق من الرصيد عند تسجيل الدخول
-                    if (appState.mockAgent.balance < appState.mockAgent.lowBalanceThreshold) {
-                        showAlert(`تنبيه: رصيدك منخفض جداً (${appState.mockAgent.balance}$)! (متطلب 39)`, 'error');
-                    }
+                    if (agentUI.depositOption) agentUI.depositOption.style.display = 'flex';
+                    if (agentUI.toggleBtn) agentUI.toggleBtn.textContent = t('toggleToB2C', appState.currentLang);
+                    if (appState.mockAgent.balance < appState.mockAgent.lowBalanceThreshold) showAlert('Alert: Low balance (' + appState.mockAgent.balance + '$)!', 'error');
                 } else {
-                    agentUI.section.style.display = 'none';
-                    agentUI.depositOption.style.display = 'none';
-                    agentUI.toggleBtn.textContent = 'التبديل إلى B2B';
-                    showAlert(''); // إخفاء التنبيه
+                    if (agentUI.section) agentUI.section.style.display = 'none';
+                    if (agentUI.depositOption) agentUI.depositOption.style.display = 'none';
+                    if (agentUI.toggleBtn) agentUI.toggleBtn.textContent = t('toggleToB2B', appState.currentLang);
+                    showAlert('');
                 }
             }
 
-            // --- دوال البحث و النتائج ---
             function switchSearchTab(type) {
                 appState.searchType = type;
+                [tabs.flights, tabs.hotels].forEach(function (el) { if (el) el.classList.remove('border-indigo-600', 'text-indigo-700', 'text-gray-500'); });
+                [forms.flights, forms.hotels].forEach(function (f) { if (f) f.style.display = 'none'; });
                 if (type === 'flights') {
-                    tabs.flights.classList.add('border-indigo-600', 'text-indigo-700');
-                    tabs.flights.classList.remove('text-gray-500');
-                    tabs.hotels.classList.remove('border-indigo-600', 'text-indigo-700');
-                    tabs.hotels.classList.add('text-gray-500');
-                    forms.flights.style.display = 'block';
-                    forms.hotels.style.display = 'none';
+                    if (tabs.flights) tabs.flights.classList.add('border-indigo-600', 'text-indigo-700');
+                    if (forms.flights) forms.flights.style.display = 'block';
+                    if (tabs.hotels) tabs.hotels.classList.add('text-gray-500');
+                    if (filters.flights) filters.flights.style.display = 'block';
+                    if (filters.hotels) filters.hotels.style.display = 'none';
                 } else {
-                    tabs.hotels.classList.add('border-indigo-600', 'text-indigo-700');
-                    tabs.hotels.classList.remove('text-gray-500');
-                    tabs.flights.classList.remove('border-indigo-600', 'text-indigo-700');
-                    tabs.flights.classList.add('text-gray-500');
-                    forms.flights.style.display = 'none';
-                    forms.hotels.style.display = 'block';
+                    if (tabs.hotels) tabs.hotels.classList.add('border-indigo-600', 'text-indigo-700');
+                    if (forms.hotels) forms.hotels.style.display = 'block';
+                    if (tabs.flights) tabs.flights.classList.add('text-gray-500');
+                    if (filters.flights) filters.flights.style.display = 'none';
+                    if (filters.hotels) filters.hotels.style.display = 'block';
                 }
             }
 
             function performSearch(e) {
-                e.preventDefault();
+                if (e && e.preventDefault) e.preventDefault();
                 showView('results');
-                if (appState.searchType === 'flights') {
-                    filters.flights.style.display = 'block';
-                    filters.hotels.style.display = 'none';
-                    renderFareCalendar(); // (متطلب 14)
-                } else {
-                    filters.flights.style.display = 'none';
-                    filters.hotels.style.display = 'block';
-                    // إخفاء مخطط الأسعار إذا كان البحث عن فنادق
-                    document.getElementById('fareCalendarChart').parentElement.style.display = 'none';
-                }
-                // ... هنا يتم جلب النتائج من (app.py) ...
-                showAlert('عرض نتائج البحث. يتم الآن تطبيق الفلاتر.', 'success');
+                if (appState.searchType === 'flights') renderFareCalendar(appState.currentLang);
+                showAlert('Displaying search results. Filters are being applied.', 'success');
             }
 
-            // --- (متطلب 14) مخطط أسعار التقويم ---
-            function renderFareCalendar() {
-                const ctx = document.getElementById('fareCalendarChart').getContext('2d');
-                if (window.myFareChart) {
-                    window.myFareChart.destroy();
-                }
-                window.myFareChart = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: ['25 نوفمبر', '26 نوفمبر', '27 نوفمبر', '28 نوفمبر', '29 نوفمبر'],
-                        datasets: [{
-                            label: 'أقل سعر',
-                            data: [950, 890, 920, 850, 1100],
-                            backgroundColor: 'rgba(79, 70, 229, 0.6)',
-                            borderColor: 'rgba(79, 70, 229, 1)',
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
-                        scales: { y: { beginAtZero: false, ticks: { callback: (val) => '$' + val } } }
-                    }
-                });
+            function renderFareCalendar(lang) {
+                var canvas = document.getElementById('fareCalendarChart');
+                if (!canvas) return;
+                var ctx = canvas.getContext('2d');
+                if (window.myFareChart) window.myFareChart.destroy();
+                var labels = (lang === 'ar') ? ['نوفمبر 25', 'نوفمبر 26', 'نوفمبر 27', 'نوفمبر 28', 'نوفمبر 29'] : ['Nov 25', 'Nov 26', 'Nov 27', 'Nov 28', 'Nov 29'];
+                window.myFareChart = new Chart(ctx, { type: 'bar', data: { labels: labels, datasets: [{ label: t('priceFilter', lang), data: [950, 890, 920, 850, 1100], backgroundColor: 'rgba(79, 70, 229, 0.6)', borderWidth: 1 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: false, ticks: { callback: function (val) { return '$' + val; } } } } } });
             }
 
-            // --- (متطلبات 8, 9, 10) تحسين تجربة المستخدم في نموذج البحث ---
-            const flightOrigin = document.getElementById('flight-origin');
-            const flightDest = document.getElementById('flight-dest');
-            const flightDep = document.getElementById('flight-departure');
-            const flightRet = document.getElementById('flight-return');
-            
-            flightOrigin.addEventListener('change', () => flightDest.focus()); // (متطلب 8)
-            flightDest.addEventListener('change', () => flightDep.focus()); // (متطلب 10)
-            flightDep.addEventListener('change', () => flightRet.focus()); // (متطلب 9)
-
-            // --- دوال صفحة الحجز (Booking) ---
             function goToBookingPage() {
-                appState.selectedResult = { id: 1, price: 950 }; // بيانات افتراضية
+                appState.selectedResult = { id: 1, price: 950 };
                 showView('booking');
-                
-                // (متطلب 33) تعبئة آلية
-                bookingForm.name.value = appState.mockUser.name;
-                bookingForm.nat.value = appState.mockUser.nationality;
-                bookingForm.email.value = appState.mockUser.email;
-                bookingForm.tel.value = appState.mockUser.tel;
-
-                // (متطلب 38) التحقق من سياسة الشركة
+                var userProfile = (appState.currentLang === 'ar') ? { name: 'عبدالله العلي', email: 'a.ali@example.com' } : appState.mockUser;
+                var nameEl = document.getElementById('pass-name');
+                var emailEl = document.getElementById('pass-email');
+                if (nameEl) nameEl.value = userProfile.name || '';
+                if (emailEl) emailEl.value = userProfile.email || '';
                 if (appState.selectedResult.price > 900 && !appState.isAgentView) {
-                    policySection.style.display = 'block';
+                    if (policySection) policySection.style.display = 'block';
                 } else {
-                    policySection.style.display = 'none';
+                    if (policySection) policySection.style.display = 'none';
                 }
-                
-                // (متطلب 23) إخفاء شريط الملخص السفلي
-                selectedFlightBar.style.display = 'none';
             }
-            
+
             function confirmBooking() {
-                // (متطلب 38) التحقق من سبب خرق السياسة
-                if (policySection.style.display === 'block' && !document.getElementById('policy-reason').value) {
-                    showAlert('خطأ: يجب تحديد سبب اختيار رحلة خارج سياسة الشركة (متطلب 38)', 'error');
-                    return;
+                var reasonEl = document.getElementById('policy-reason');
+                if (policySection && policySection.style.display === 'block' && !appState.isAgentView) {
+                    if (!reasonEl || !reasonEl.value.trim()) {
+                        openPolicyModal();
+                        return;
+                    }
                 }
-                
-                // (متطلب 3) التحقق من حجز Indigo (محاكاة)
-                if (Math.random() > 0.9) { // 10% فرصة للفشل
-                    showAlert('خطأ: الحجز معلق لدى الناقل. يرجى المحاولة مرة أخرى. (متطلب 3)', 'error');
-                    return;
-                }
-
-                showAlert('تم تأكيد الحجز بنجاح! سيتم إرسال التذكرة إلى بريدك الإلكتروني (متطلب 28)', 'success');
-                // ... هنا يتم استدعاء app.py لإرسال البريد الإلكتروني ...
-                
-                // العودة للرئيسية بعد النجاح
-                setTimeout(() => showView('search'), 2000);
+                if (reasonEl) reasonEl.classList.remove('border-red-600','ring-2','ring-red-200');
+                if (Math.random() > 0.9) { showAlert(t('bookingPendingError', appState.currentLang), 'error'); return; }
+                showAlert(t('bookingSuccess', appState.currentLang), 'success');
+                setTimeout(function () { showView('search'); }, 1200);
             }
 
-            // --- دالة عرض التنبيهات ---
-            function showAlert(message, type = 'info') {
+            function showAlert(message, type) {
+                if (!alertMsg) return;
                 alertMsg.style.display = 'none';
                 if (!message) return;
-                
                 alertMsg.textContent = message;
-                alertMsg.className = 'max-w-7xl mx-auto mt-4 p-3 rounded-lg text-sm text-center'; // Reset
-                
-                if (type === 'success') {
-                    alertMsg.classList.add('bg-green-100', 'text-green-700');
-                } else if (type === 'error') {
-                    alertMsg.classList.add('bg-red-100', 'text-red-700');
-                } else {
-                    alertMsg.classList.add('bg-blue-100', 'text-blue-700');
-                }
+                alertMsg.className = 'max-w-7xl mx-auto mt-4 p-3 rounded-lg text-sm text-center';
+                if (type === 'success') alertMsg.classList.add('bg-green-100', 'text-green-700');
+                else if (type === 'error') alertMsg.classList.add('bg-red-100', 'text-red-700');
+                else alertMsg.classList.add('bg-blue-100', 'text-blue-700');
                 alertMsg.style.display = 'block';
             }
 
-            // --- ربط الأحداث (Event Listeners) ---
-            agentUI.toggleBtn.addEventListener('click', toggleAgentView);
-            agentUI.rechargeBtn.addEventListener('click', () => {
-                showAlert('سيتم التوجيه لصفحة إدارة الودائع لإعادة الشحن (متطلب 5)', 'info');
-            });
-            
-            tabs.flights.addEventListener('click', () => switchSearchTab('flights'));
-            tabs.hotels.addEventListener('click', () => switchSearchTab('hotels'));
-            
-            forms.flights.addEventListener('submit', performSearch);
-            forms.hotels.addEventListener('submit', performSearch);
-            
-            document.getElementById('back-to-search-1').addEventListener('click', () => showView('search'));
-            document.getElementById('back-to-results-1').addEventListener('click', () => showView('results'));
-            document.getElementById('confirm-booking-btn').addEventListener('click', confirmBooking);
+            // Language switcher
+            langSelector.addEventListener('change', function (e) { appState.currentLang = e.target.value; translateUI(appState.currentLang, appState); });
 
-            // استخدام event delegation لنتائج البحث
-            document.getElementById('results-list').addEventListener('click', (e) => {
-                if (e.target.closest('.book-now-btn')) {
-                    goToBookingPage();
+            // events
+            if (agentUI.toggleBtn) agentUI.toggleBtn.addEventListener('click', toggleAgentView);
+            if (forms.flights) forms.flights.addEventListener('submit', performSearch);
+            if (forms.hotels) forms.hotels.addEventListener('submit', performSearch);
+            var backToSearch = document.getElementById('back-to-search-1'); if (backToSearch) backToSearch.addEventListener('click', function () { showView('search'); });
+            var backToResults = document.getElementById('back-to-results-1'); if (backToResults) backToResults.addEventListener('click', function () { showView('results'); });
+            var confirmBtn = document.getElementById('confirm-booking-btn'); if (confirmBtn) confirmBtn.addEventListener('click', confirmBooking);
+            var resultsList = document.getElementById('results-list'); if (resultsList) resultsList.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('.book-now-btn')) goToBookingPage(); });
+            var footerBook = document.getElementById('footer-book-btn'); if (footerBook) footerBook.addEventListener('click', goToBookingPage);
+
+            var downloadBtn = document.getElementById('download-excel-btn'); if (downloadBtn) downloadBtn.addEventListener('click', function () {
+                var rows = [['Airline','From','To','Depart','Arrive','Price'], ['Emirates','RUH','DXB','08:00','11:30','950']];
+                var csv = rows.map(function (r) { return r.map(function (c) { return '"' + String(c).replace(/"/g,'""') + '"'; }).join(','); }).join('\n');
+                var blob = new Blob([csv], { type: 'text/csv' }); var url = URL.createObjectURL(blob); var a = document.createElement('a'); a.href = url; a.download = 'results.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+            });
+
+            // quick UX
+            var flightOrigin = document.getElementById('flight-origin'); var flightDest = document.getElementById('flight-dest'); var flightDep = document.getElementById('flight-departure'); var flightRet = document.getElementById('flight-return');
+            if (flightOrigin) flightOrigin.addEventListener('change', function () { if (flightDest) flightDest.focus(); });
+            if (flightDest) flightDest.addEventListener('change', function () { if (flightDep) flightDep.focus(); });
+            if (flightDep) flightDep.addEventListener('change', function () { if (flightRet) flightRet.focus(); });
+            if (tabs.flights) tabs.flights.addEventListener('click', function () { switchSearchTab('flights'); });
+            if (tabs.hotels) tabs.hotels.addEventListener('click', function () { switchSearchTab('hotels'); });
+
+            // Build a modal using DOM methods to avoid template literal pitfalls
+            var policyModal = document.createElement('div');
+            policyModal.id = 'policy-modal';
+            policyModal.className = 'hidden fixed inset-0 bg-black/40 flex items-center justify-center z-50';
+            var modalInner = document.createElement('div');
+            modalInner.className = 'bg-white rounded-xl shadow-xl max-w-xl w-full p-6';
+            modalInner.innerHTML = '<h3 class="text-lg font-bold mb-3">Reason for Out-of-Policy Selection</h3>' +
+                '<p class="text-sm text-gray-600 mb-3">Please provide a short reason before confirming this booking.</p>' +
+                '<div class="space-y-3">' +
+                '<label class="text-sm font-semibold">Quick templates</label>' +
+                '<div class="flex gap-2">' +
+                '<button type="button" class="policy-modal-template px-3 py-2 border rounded">Business critical</button>' +
+                '<button type="button" class="policy-modal-template px-3 py-2 border rounded">Customer request</button>' +
+                '<button type="button" class="policy-modal-template px-3 py-2 border rounded">Price match</button>' +
+                '</div>' +
+                '<textarea id="policy-modal-text" class="w-full p-3 border rounded" rows="4" placeholder="Enter reason..."></textarea>' +
+                '</div>' +
+                '<div class="mt-4 flex justify-end gap-3">' +
+                '<button id="policy-modal-cancel" class="px-4 py-2 rounded border">Cancel</button>' +
+                '<button id="policy-modal-submit" class="px-4 py-2 rounded bg-indigo-600 text-white">Submit Reason</button>' +
+                '</div>';
+            policyModal.appendChild(modalInner);
+            document.body.appendChild(policyModal);
+
+            var policyModalText = document.getElementById('policy-modal-text');
+            var policyModalSubmit = document.getElementById('policy-modal-submit');
+            var policyModalCancel = document.getElementById('policy-modal-cancel');
+
+            document.addEventListener('click', function (e) {
+                if (!e.target) return;
+                if (e.target.matches && e.target.matches('.policy-template-btn')) {
+                    var val = e.target.getAttribute('data-template');
+                    var reasonInline = document.getElementById('policy-reason'); if (reasonInline) reasonInline.value = val;
+                }
+                if (e.target.matches && e.target.matches('.policy-modal-template')) {
+                    if (policyModalText) policyModalText.value = e.target.textContent.trim();
                 }
             });
-            
-            document.getElementById('footer-book-btn').addEventListener('click', goToBookingPage);
-            
-            // (متطلب 32) أزرار الخدمات الإضافية
-            document.getElementById('select-seat-btn').addEventListener('click', () => showAlert('محاكاة: فتح نافذة اختيار المقاعد.', 'info'));
-            document.getElementById('select-meal-btn').addEventListener('click', () => showAlert('محاكاة: فتح نافذة اختيار الوجبات.', 'info'));
-            document.getElementById('select-bag-btn').addEventListener('click', () => showAlert('محاكاة: فتح نافذة إضافة الأمتعة.', 'info'));
-            
-            // (متطلب 21) تحميل Excel
-            document.getElementById('download-excel-btn').addEventListener('click', () => {
-                showAlert('جاري تجهيز ملف Excel للتحميل... (متطلب 21)', 'success');
+
+            function openPolicyModal() { if (policyModal) { policyModal.classList.remove('hidden'); if (policyModalText) { policyModalText.value = ''; policyModalText.focus(); } } }
+            function closePolicyModal() { if (policyModal) policyModal.classList.add('hidden'); }
+
+            if (policyModalCancel) policyModalCancel.addEventListener('click', function () { closePolicyModal(); var reasonInline = document.getElementById('policy-reason'); if (reasonInline) { reasonInline.classList.add('border-red-600','ring-2','ring-red-200'); reasonInline.focus(); } });
+
+            if (policyModalSubmit) policyModalSubmit.addEventListener('click', function () {
+                var userText = policyModalText ? policyModalText.value.trim() : '';
+                if (!userText) { if (policyModalText) { policyModalText.classList.add('border-red-600'); policyModalText.focus(); } return; }
+                var reasonInline = document.getElementById('policy-reason'); if (reasonInline) reasonInline.value = userText;
+                closePolicyModal();
+                // proceed
+                confirmBooking();
             });
 
-            // --- بدء تشغيل التطبيق ---
-            switchSearchTab('flights'); // البدء بتبويب الطيران
-            showView('search'); // البدء بواجهة البحث
-        });
-    </script>
+            // init UI translation and view
+            appState.currentLang = langSelector.value;
+            translateUI(appState.currentLang, appState);
+            switchSearchTab('flights');
+            showView('search');
 
+            // exposed small helpers
+            window._travelApp = { appState: appState, goToBookingPage: goToBookingPage };
+        });
+
+        // translateUI defined after DOMContent to keep file organized
+        function translateUI(lang, appState) {
+            var isAR = lang === 'ar';
+            document.documentElement.dir = isAR ? 'rtl' : 'ltr';
+            document.documentElement.lang = lang;
+            document.querySelectorAll('[data-key]').forEach(function (el) { var key = el.getAttribute('data-key'); if (key) el.textContent = t(key, lang); });
+            document.querySelectorAll('[data-placeholder-key]').forEach(function (el) { var key = el.getAttribute('data-placeholder-key'); if (key) el.placeholder = t(key, lang); });
+            var titleEl = document.getElementById('app-title'); if (titleEl) titleEl.textContent = t('appTitle', lang);
+            var balanceLabel = document.getElementById('balance-label'); if (balanceLabel) balanceLabel.textContent = t('balanceLabel', lang);
+            var selectedFlightText = document.getElementById('selected-flight-text'); if (selectedFlightText) selectedFlightText.textContent = isAR ? 'الرحلة المختارة: طيران الإمارات' : 'Selected Flight: Emirates';
+            var toggleBtn = document.getElementById('toggle-view-btn'); if (toggleBtn && appState) toggleBtn.textContent = appState.isAgentView ? t('toggleToB2C', lang) : t('toggleToB2B', lang);
+        }
+    </script>
 </body>
 </html>
