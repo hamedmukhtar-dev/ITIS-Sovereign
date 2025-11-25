@@ -1,368 +1,445 @@
-# app.py
-# Fixed: unterminated string literal in ai_reply_stream mock; added CLI/test-mode improvements.
-"""
-Dara Investor Platform - Streamlit app with graceful fallback for non-Streamlit environments.
+import React, { useState, useEffect } from 'react';
+import { getAuth } from 'firebase/auth';
+import { initializeApp } from 'firebase/app';
 
-This file was rewritten to handle the case where the sandbox (or runtime) does not have
-`streamlit` installed (ModuleNotFoundError). Behavior:
-
-- If `streamlit` is available, the full interactive app runs as before.
-- If `streamlit` is NOT available, the script runs in a CLI/test mode that exercises the
-  important helper functions (get_signed_url, ai_reply_sync, ai_reply_stream mock) so you can
-  validate logic in environments without Streamlit.
-
-To deploy on share.streamlit.io, ensure `streamlit` is present in `requirements.txt` and push
-this file to your GitHub repo under e.g. `streamlit_app/app.py`.
-
-"""
-import os
-import time
-import json
-import requests
-from typing import Optional
-
-# Try to import Streamlit — if missing, we fall back to CLI/test mode.
-try:
-    import streamlit as st
-    ST_AVAILABLE = True
-except Exception:
-    ST_AVAILABLE = False
-
-# Optional: OpenAI streaming if OPENAI_API_KEY present
-try:
-    import openai
-    OPENAI_AVAILABLE = True
-except Exception:
-    OPENAI_AVAILABLE = False
-
-# ---------- Configuration ----------
-BACKEND_BASE = os.environ.get("REACT_APP_BACKEND_BASE", os.environ.get("BACKEND_BASE", ""))
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-if ST_AVAILABLE:
-    # If running in Streamlit, secrets may contain the key
-    OPENAI_API_KEY = OPENAI_API_KEY or st.secrets.get("OPENAI_API_KEY", None)
-
-if OPENAI_API_KEY and OPENAI_AVAILABLE:
-    openai.api_key = OPENAI_API_KEY
-
-# Mock fixtures (fallback)
-MOCK_DATA = {
-    "signedUrls": {
-        "Master_Investor_Deck.pptx": "https://example.com/files/Master_Investor_Deck.pptx",
-        "Dara_Investment_Files.zip": "https://example.com/files/Dara_Investment_Files.zip",
-        "KYC_Initiative.pdf": "https://example.com/files/KYC_Initiative.pdf"
+// ====================================================================
+// 1. ملف JSON للترجمة (Localization Data)
+// ====================================================================
+const translations = {
+    AR: {
+        title: "مراجعة الحجز النهائي",
+        subtitle: "ملخص الحجز وتفاصيل الدفع",
+        logoutAlert: "⚠️ تنبيه (B2B): رصيدك الحالي (%1$) منخفض جداً. يرجى إعادة الشحن.",
+        sectionFlight: "تفاصيل رحلة الطيران",
+        carrier: "الناقل",
+        route: "المسار",
+        departureDate: "تاريخ المغادرة",
+        fareBasis: "قاعدة الأجرة",
+        ancillaries: "المقعد/الوجبة",
+        selectAncillaries: "اختيار المقعد والوجبة",
+        sectionHotel: "تفاصيل الإقامة",
+        hotelName: "اسم الفندق",
+        location: "الموقع",
+        rating: "التصنيف",
+        roomType: "الغرفة",
+        cancellation: "سياسة الإلغاء",
+        viewMap: "عرض المرافق والخريطة",
+        sectionTraveler: "بيانات المسافر (تعبئة تلقائية)",
+        fullName: "الاسم الكامل",
+        nationality: "الجنسية",
+        email: "البريد الإلكتروني",
+        mobile: "رقم الجوال",
+        policyBreachTitle: "تنبيه: تجاوز سياسة الشركة!",
+        policyBreachText: "هذه الرحلة خارج معايير السعر المحددة. يجب تقديم سبب.",
+        policyReasonPlaceholder: "يرجى كتابة سبب اختيار هذه الرحلة...",
+        summaryTitle: "ملخص السعر (%1$)",
+        basePrice: "السعر الأساسي",
+        taxes: "الضرائب والرسوم",
+        markup: "رسوم الربح (Markup)",
+        finalTotal: "الإجمالي النهائي",
+        promoTitle: "تطبيق رمز ترويجي",
+        promoPlaceholder: "أدخل الرمز الترويجي...",
+        apply: "تطبيق",
+        paymentMethod: "طريقة الدفع",
+        confirmPayment: "تأكيد الدفع والإرسال",
+        deposit: "الوديعة",
+        creditCard: "بطاقة ائتمانية",
+        debitCard: "بطاقة مدين",
+        netBanking: "الخدمات المصرفية عبر الإنترنت",
+        errorInvalidPromo: "خطأ: رمز ترويجي غير صالح.",
+        errorPolicyReason: "خطأ: يرجى تحديد سبب اختيار رحلة خارج سياسة الشركة.",
+        errorInsufficientBalance: "خطأ: رصيدك غير كافٍ لإتمام الحجز! يرجى إعادة الشحن (%1$).",
+        successBooking: "✅ جاري إرسال الحجز (PNR) عبر %1$. سيتم إرسال التذكرة بالبريد الإلكتروني.",
     },
-    "replies": {
-        "hello": "أهلًا! كيف أستطيع مساعدتك بخصوص المشروعات؟",
-        "summarize master": "الملف الرئيسي يتضمن خطة نمو 3 سنوات، توافق مع IATA، وخطة دمج محفظة دفع محلية."
+    EN: {
+        title: "Final Booking Review",
+        subtitle: "Booking Summary and Payment Details",
+        logoutAlert: "⚠️ Alert (B2B): Your current balance (%1$) is too low. Please recharge.",
+        sectionFlight: "Flight Details",
+        carrier: "Carrier",
+        route: "Route",
+        departureDate: "Departure Date",
+        fareBasis: "Fare Basis",
+        ancillaries: "Seat/Meal",
+        selectAncillaries: "Select Seat & Meal",
+        sectionHotel: "Accommodation Details",
+        hotelName: "Hotel Name",
+        location: "Location",
+        rating: "Rating",
+        roomType: "Room Type",
+        cancellation: "Cancellation Policy",
+        viewMap: "View Facilities & Map",
+        sectionTraveler: "Traveler Information (Auto-filled)",
+        fullName: "Full Name",
+        nationality: "Nationality",
+        email: "Email Address",
+        mobile: "Mobile Number",
+        policyBreachTitle: "Alert: Policy Breach!",
+        policyBreachText: "This flight is outside defined fare standards. A reason must be provided.",
+        policyReasonPlaceholder: "Please type the reason for choosing this flight...",
+        summaryTitle: "Price Summary (%1$)",
+        basePrice: "Base Price",
+        taxes: "Taxes & Fees",
+        markup: "Markup Fee",
+        finalTotal: "Final Total",
+        promoTitle: "Apply Promo Code",
+        promoPlaceholder: "Enter Promo Code...",
+        apply: "Apply",
+        paymentMethod: "Payment Method",
+        confirmPayment: "Confirm Payment & Submit",
+        deposit: "Deposit",
+        creditCard: "Credit Card",
+        debitCard: "Debit Card",
+        netBanking: "Net Banking",
+        errorInvalidPromo: "Error: Invalid promo code.",
+        errorPolicyReason: "Error: Please specify a reason for choosing an out-of-policy flight.",
+        errorInsufficientBalance: "Error: Insufficient balance to complete booking! Please recharge (%1$).",
+        successBooking: "✅ Booking (PNR) processing via %1$. Ticket will be emailed.",
+    }
+};
+
+// دالة جلب النص بناءً على اللغة
+const useTranslation = (language) => {
+    const t = (key, ...args) => {
+        let text = translations[language][key] || key;
+        args.forEach((arg, index) => {
+            text = text.replace(`%${index + 1}$`, arg);
+        });
+        return text;
+    };
+    return t;
+};
+
+// ====================================================================
+// 2. بيانات الحجز المحاكاة
+// ====================================================================
+const MOCK_FLIGHT_DETAIL = {
+    carrier: 'Emirates',
+    flightNumber: 'EK123',
+    route: 'RUH -> DXB',
+    departure: '2025-12-01',
+    fareBasis: 'Flexible Economy',
+    isRefundable: true,
+    priceDetails: {
+        base_price: 600,
+        tax_amount: 30, 
+        markup_amount: 15,
+        final_price: 645,
     },
-    "defaultReply": "مرحبًا — هذه إجابة تجريبية من الخادم المحلي."
-}
+    ancillaries: {
+        seat: 'Not Selected',
+        meal: 'Standard',
+        baggage: '20kg Checked',
+    }
+};
 
-BRAND = {"name": "Dara"}
+const MOCK_USER_PROFILE = {
+    fullName: 'خالد محمد العلي',
+    email: 'khaled.m.ali@example.com',
+    mobile: '0096650xxxxxx',
+    nationality: 'SA',
+};
 
-initial_projects = [
-    {
-        "id": "kyc",
-        "title": "KYC Initiative",
-        "tagline": "AI-Enhanced Sudan Digital Identity",
-        "description": "نظام KYC رقمي مدعوم بالذكاء الاصطناعي للتحقق البيومتري، تحليل المخاطر، وربط المستخدمين بالمؤسسات المالية.",
-        "files": [{"name": "KYC_Initiative.pdf", "key": "KYC_Initiative.pdf"}],
-        "tags": ["KYC", "AI", "Compliance"],
-    },
-    {
-        "id": "dara-plan",
-        "title": "Dara Business Plan",
-        "tagline": "TravelTech + AI Business Plan",
-        "description": "خطة عمل كاملة لشركة دارا تتضمن الرؤية، السوق، نموذج الإيرادات، وخطة التوسع 2025-2027.",
-        "files": [{"name": "Dara_BusinessPlan.pdf", "key": "Dara_BusinessPlan.pdf"}],
-        "tags": ["Business Plan", "Strategy"],
-    },
-    {
-        "id": "master",
-        "title": "Master Investor Deck",
-        "tagline": "All Projects - One Investor Package",
-        "description": "الحزمة الاستثمارية الكاملة: كل المشاريع + ملخص الاستثمار وAI Integration.",
-        "files": [{"name": "Master_Investor_Deck.pptx", "key": "Master_Investor_Deck.pptx"}],
-        "tags": ["Master", "All"],
-    },
-]
+const MOCK_AGENT_INFO = {
+    isAgent: true,
+    currentBalance: 800,
+    creditLimit: 1000,
+};
 
-# ---------- Helpers ----------
-def get_signed_url(key: str) -> Optional[str]:
-    """Resolve a file key to a URL using BACKEND_BASE or MOCK_DATA fallback."""
-    if not key:
-        return None
-    # Try backend first
-    if BACKEND_BASE:
-        try:
-            resp = requests.get(f"{BACKEND_BASE.rstrip('/')}/api/signed-url", params={"key": key}, timeout=6)
-            if resp.ok:
-                j = resp.json()
-                return j.get("url")
-        except Exception:
-            # network issues or backend unavailable — fall back to mock
-            pass
-    return MOCK_DATA["signedUrls"].get(key) or f"https://example.com/files/{key}"
+const MOCK_HOTEL = {
+    name: "The Smart Resort & Spa",
+    location: "Dubai Marina",
+    starRating: 5,
+    roomType: 'Deluxe Suite',
+    checkIn: '2026-03-01',
+    checkOut: '2026-03-05',
+    nights: 4,
+    cancellationPolicy: 'الإلغاء مجاني قبل 72 ساعة.',
+    facilities: ['Pool', 'Spa', 'Free WiFi', 'Gym'],
+    about: 'فندق فاخر يقع على الواجهة البحرية...',
+    nearby: ['Dubai Mall', 'Burj Khalifa'],
+    image: 'https://placehold.co/600x400/0d9488/FFFFFF?text=Hotel+Image'
+};
 
+// ====================================================================
+// 3. المكون الرئيسي
+// ====================================================================
+const App = () => {
+    const [language, setLanguage] = useState('AR'); // حالة اللغة (متطلب اختيار اللغة)
+    const t = useTranslation(language); // دالة الترجمة
 
-def ai_reply_sync(message: str) -> str:
-    """Non-streaming reply: use OpenAI if available, otherwise mock."""
-    if OPENAI_API_KEY and OPENAI_AVAILABLE:
-        try:
-            # Using chat completion (non-streaming)
-            res = openai.ChatCompletion.create(
-                model=os.environ.get("OPENAI_MODEL", "gpt-4o-mini"),
-                messages=[{"role":"user", "content": message}],
-                temperature=0.2,
-                max_tokens=800,
-            )
-            # Extract text safely
-            choices = res.get("choices", [])
-            if choices:
-                msg = choices[0].get("message") or {}
-                return msg.get("content") or choices[0].get("text") or MOCK_DATA["defaultReply"]
-            return MOCK_DATA["defaultReply"]
-        except Exception as e:
-            # Log to console in CLI mode; in Streamlit show error
-            if ST_AVAILABLE:
-                st.error("OpenAI request failed (check logs). Using mock reply.")
-            else:
-                print("OpenAI request failed:", e)
-            return MOCK_DATA["replies"].get(message.lower(), MOCK_DATA["defaultReply"])
-    else:
-        return MOCK_DATA["replies"].get(message.lower(), MOCK_DATA["defaultReply"])
+    const [bookingDetails, setBookingDetails] = useState(MOCK_FLIGHT_DETAIL);
+    const [userProfile, setUserProfile] = useState(MOCK_USER_PROFILE);
+    const [promoCode, setPromoCode] = useState('');
+    const [policyReason, setPolicyReason] = useState('');
+    const [isPolicyBreach, setIsPolicyBreach] = useState(false);
+    const [selectedPayment, setSelectedPayment] = useState('Credit Card');
+    const [message, setMessage] = useState('');
+    const [isAgent, setIsAgent] = useState(MOCK_AGENT_INFO.isAgent);
 
+    const isArabic = language === 'AR';
 
-def ai_reply_stream(message: str, consumer) -> str:
-    """
-    Stream reply from OpenAI if available. 'consumer' is a callable receiving the growing text.
-    If streaming isn't possible, we simulate streaming using mock lines and call consumer progressively.
-    Returns the full final string.
-    """
-    if not (OPENAI_API_KEY and OPENAI_AVAILABLE):
-        # simulate streaming with mock lines
-        lines = [
-            "مرحبًا — هذا مثال للبث المباشر.",
-            "أعمل على تلخيص العرض...",
-            "النقطة الأولى: جاهزية تقنية.",
-            "النقطة الثانية: التكامل مع البنوك المحلية.",
-            "انتهى البث."
-        ]
-        full = ""
-        for ln in lines:
-            # fixed: ensure newline is concatenated correctly
-            full += ln + "
-"
-            try:
-                consumer(full)
-            except Exception:
-                pass
-            time.sleep(0.25)
-        return full
+    // محاكاة الإعداد عند التحميل
+    useEffect(() => {
+        // تحديد اتجاه الصفحة (RTL/LTR)
+        document.documentElement.dir = isArabic ? 'rtl' : 'ltr';
+        document.documentElement.lang = language.toLowerCase();
+        
+        // محاكاة التحقق من تجاوز سياسة السعر
+        if (bookingDetails.priceDetails.base_price > 550 && !isAgent) {
+            setIsPolicyBreach(true);
+        }
+        
+        // محاكاة تنبيه الرصيد للوكيل
+        if (isAgent && MOCK_AGENT_INFO.currentBalance < MOCK_AGENT_INFO.creditLimit * 0.5) {
+             setMessage(t('logoutAlert', MOCK_AGENT_INFO.currentBalance));
+        }
+    }, [bookingDetails.priceDetails.base_price, isAgent, isArabic, language]);
 
-    # Real OpenAI streaming
-    try:
-        stream = openai.ChatCompletion.create(
-            model=os.environ.get("OPENAI_MODEL", "gpt-4o-mini"),
-            messages=[{"role":"user","content":message}],
-            temperature=0.2,
-            stream=True,
-        )
-        full = ""
-        for chunk in stream:
-            choices = chunk.get("choices", [])
-            if choices:
-                delta = choices[0].get("delta", {})
-                content = delta.get("content")
-                if content:
-                    full += content
-                    try:
-                        consumer(full)
-                    except Exception:
-                        pass
-        return full
-    except Exception as e:
-        if ST_AVAILABLE:
-            st.error("Stream from OpenAI failed — falling back to sync.")
-        else:
-            print("Stream from OpenAI failed:", e)
-        return ai_reply_sync(message)
+    // دالة تحديث الحقول القابلة للتعديل
+    const handleProfileChange = (e) => {
+        const { name, value } = e.target;
+        setUserProfile(prev => ({ ...prev, [name]: value }));
+    };
 
+    // دالة محاكاة لتطبيق الكود الترويجي
+    const applyPromo = () => {
+        if (promoCode === 'SAVE10') {
+            const discount = bookingDetails.priceDetails.final_price * 0.10;
+            const newPrice = bookingDetails.priceDetails.final_price - discount;
+            setBookingDetails(prev => ({
+                ...prev,
+                priceDetails: {
+                    ...prev.priceDetails,
+                    final_price: newPrice,
+                },
+            }));
+            setMessage(`✅ ${isArabic ? 'تم تطبيق الخصم بنسبة 10%. السعر الجديد هو' : '10% discount applied. New price is'} ${newPrice.toFixed(2)}$`);
+        } else {
+            setMessage(t('errorInvalidPromo'));
+        }
+    };
 
-# ---------- Streamlit App (only if available) ----------
-if ST_AVAILABLE:
-    st.set_page_config(page_title="Dara Investor Platform", layout="wide")
+    // دالة محاكاة لإتمام الحجز
+    const handleConfirmBooking = () => {
+        if (isPolicyBreach && !policyReason.trim()) {
+            setMessage(t('errorPolicyReason'));
+            return;
+        }
+        
+        // التحقق من الرصيد للوكلاء
+        if (isAgent && bookingDetails.priceDetails.final_price > MOCK_AGENT_INFO.currentBalance) {
+             setMessage(t('errorInsufficientBalance', MOCK_AGENT_INFO.currentBalance));
+             return;
+        }
 
-    # ---------- Session state ----------
-    if "chat_lines" not in st.session_state:
-        st.session_state.chat_lines = [{"from": "system", "text": "مرحبًا بك في منصة المستثمر — اسألني عن أي مشروع."}]
-    if "lang" not in st.session_state:
-        st.session_state.lang = "ar"
-    if "query" not in st.session_state:
-        st.session_state.query = ""
-    if "active_tags" not in st.session_state:
-        st.session_state.active_tags = []
-    if "projects" not in st.session_state:
-        st.session_state.projects = initial_projects
+        setMessage(t('successBooking', selectedPayment));
+    };
 
-    # UI Layout
-    col1, col2 = st.columns([3, 1])
+    const getFinalPrice = () => bookingDetails.priceDetails.final_price.toFixed(2);
+    
+    // ====================================================================
+    // واجهة المستخدم الرسومية (UI)
+    // ====================================================================
+    return (
+        <div className="min-h-screen bg-gray-50 p-4 sm:p-8 font-sans">
+            <div className="w-full max-w-6xl mx-auto">
+                
+                {/* شريط اختيار اللغة (متعدد اللغات) */}
+                <div className={`flex justify-end mb-4 ${isArabic ? 'rtl' : 'ltr'}`}>
+                    <button 
+                        onClick={() => setLanguage('AR')}
+                        className={`text-sm py-1 px-3 rounded-l-lg transition duration-150 ${isArabic ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                    >
+                        العربية (AR)
+                    </button>
+                    <button 
+                        onClick={() => setLanguage('EN')}
+                        className={`text-sm py-1 px-3 rounded-r-lg transition duration-150 ${!isArabic ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                    >
+                        English (EN)
+                    </button>
+                </div>
 
-    with col1:
-        st.title(f"{BRAND['name']} — Investor Platform")
-        st.write("حزمة العرض الاستثمارية • جاهزة للمستثمرين" if st.session_state.lang == "ar" else "Investor package • ready for meetings")
+                <h1 className="text-3xl font-extrabold text-indigo-700 mb-2">{t('title')}</h1>
+                <p className="text-sm text-gray-500 mb-6 border-b pb-4">{t('subtitle')}</p>
 
-        # Search + tags
-        q = st.text_input("ابحث عن مشروع أو وصف..." if st.session_state.lang == "ar" else "Search project or description...", value=st.session_state.query)
-        st.session_state.query = q
+                <div className={`p-3 mb-6 rounded-lg text-sm ${message.startsWith('⚠️') || message.startsWith('خطأ') || message.startsWith('Error') ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
+                    {message}
+                </div>
 
-        # tags
-        all_tags = sorted({t for p in st.session_state.projects for t in p["tags"]})
-        tag_cols = st.columns(len(all_tags) or 1)
-        for i, tag in enumerate(all_tags):
-            pressed = tag in st.session_state.active_tags
-            if tag_cols[i].button(tag if not pressed else f"✓ {tag}"):
-                if pressed:
-                    st.session_state.active_tags.remove(tag)
-                else:
-                    st.session_state.active_tags.append(tag)
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    
+                    {/* العمود الأيسر: تفاصيل الحجز */}
+                    <div className="lg:col-span-2 space-y-8">
 
-        # Filtered projects
-        def matches(p):
-            q = st.session_state.query.strip().lower()
-            if q and not (q in p["title"].lower() or q in p["description"].lower()):
-                return False
-            if st.session_state.active_tags and not all(t in p["tags"] for t in st.session_state.active_tags):
-                return False
-            return True
+                        {/* 1. تفاصيل الطيران والحجوزات */}
+                        <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                            <h2 className="text-xl font-bold text-gray-800 mb-4">{t('sectionFlight')}</h2>
+                            <div className="grid grid-cols-2 gap-y-2 text-sm text-gray-600">
+                                <div><span className="font-semibold">{t('carrier')}:</span> {bookingDetails.carrier} ({bookingDetails.flightNumber})</div>
+                                <div><span className="font-semibold">{t('route')}:</span> {bookingDetails.route}</div>
+                                <div><span className="font-semibold">{t('departureDate')}:</span> {bookingDetails.departure}</div>
+                                <div><span className="font-semibold">{t('fareBasis')}:</span> {bookingDetails.fareBasis}</div>
+                            </div>
+                            
+                            <hr className="my-4"/>
 
-        filtered = [p for p in st.session_state.projects if matches(p)]
+                            {/* خيار المقعد والوجبة */}
+                            <div className="flex justify-between items-center bg-blue-50 p-3 rounded-lg">
+                                <p className="font-medium text-blue-700">{t('ancillaries')}:</p>
+                                <button 
+                                    onClick={() => setMessage(isArabic ? 'سيتم فتح نافذة اختيار المقاعد والوجبات والأمتعة الإضافية.' : 'A popup for seat, meal, and baggage selection will open.')}
+                                    className="text-sm bg-blue-600 text-white py-1 px-4 rounded-lg hover:bg-blue-700 transition"
+                                >
+                                    {t('selectAncillaries')}
+                                </button>
+                            </div>
+                        </div>
+                        
+                        {/* 2. تفاصيل الفندق */}
+                        <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                            <h2 className="text-xl font-bold text-gray-800 mb-4">{t('sectionHotel')}: {MOCK_HOTEL.name}</h2>
+                            <div className="flex space-x-4 rtl:space-x-reverse">
+                                <img src={MOCK_HOTEL.image} alt="Hotel Image" className="w-24 h-24 object-cover rounded-lg"/>
+                                <div className="text-sm text-gray-600">
+                                    <p><span className="font-semibold">{t('location')}:</span> {MOCK_HOTEL.location}</p>
+                                    <p><span className="font-semibold">{t('rating')}:</span> {MOCK_HOTEL.starRating} {isArabic ? 'نجوم' : 'Stars'}</p>
+                                    <p><span className="font-semibold">{t('roomType')}:</span> {MOCK_HOTEL.roomType} (4 {isArabic ? 'ليالي' : 'Nights'})</p>
+                                    <p className='mt-2'><span className="font-semibold">{t('cancellation')}:</span> {isArabic ? MOCK_HOTEL.cancellationPolicy : 'Free cancellation before 72 hours.'}</p>
+                                    <button onClick={() => setMessage(isArabic ? 'عرض خريطة الفندق ومناطق الجذب القريبة' : 'Showing hotel map and nearby attractions.')} className="text-indigo-600 text-xs mt-1 hover:underline">{t('viewMap')}</button>
+                                </div>
+                            </div>
+                        </div>
 
-        # Projects grid
-        for p in filtered:
-            with st.container():
-                st.subheader(p["title"])
-                st.caption(" • ".join(p["tags"]))
-                st.write(p["tagline"])
-                st.write(p["description"])
-                file_buttons = []
-                for f in p["files"]:
-                    url = get_signed_url(f.get("key") or f.get("url") or "")
-                    file_buttons.append((f["name"], url))
-                cols = st.columns(len(file_buttons) or 1)
-                for i, (fname, furl) in enumerate(file_buttons):
-                    if cols[i].button("تحميل" if st.session_state.lang == "ar" else "Download", key=f"{p['id']}-{fname}"):
-                        if furl:
-                            st.write(f"[فتح الملف]({furl})")
-                            st.experimental_set_query_params()
-                        else:
-                            st.error("File URL not available.")
+                        {/* 3. تفاصيل المسافر */}
+                        <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                            <h2 className="text-xl font-bold text-gray-800 mb-4">{t('sectionTraveler')}</h2>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">{t('fullName')}</label>
+                                    <input type="text" value={userProfile.fullName} readOnly className="mt-1 w-full px-3 py-2 border rounded-lg bg-gray-100" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">{t('nationality')}</label>
+                                    <input type="text" value={userProfile.nationality} readOnly className="mt-1 w-full px-3 py-2 border rounded-lg bg-gray-100" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">{t('email')}</label>
+                                    <input 
+                                        type="email" 
+                                        name="email"
+                                        value={userProfile.email} 
+                                        onChange={handleProfileChange}
+                                        className="mt-1 w-full px-3 py-2 border rounded-lg" 
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">{t('mobile')}</label>
+                                    <input 
+                                        type="text" 
+                                        name="mobile"
+                                        value={userProfile.mobile} 
+                                        onChange={handleProfileChange}
+                                        className="mt-1 w-full px-3 py-2 border rounded-lg" 
+                                    />
+                                </div>
+                            </div>
+                        </div>
 
-    with col2:
-        # Language toggle + quick links + AI panel
-        lang_col1, lang_col2 = st.columns(2)
-        if lang_col1.button("العربية"):
-            st.session_state.lang = "ar"
-        if lang_col2.button("English"):
-            st.session_state.lang = "en"
+                        {/* 4. تجاوز سياسة الشركة */}
+                        {isPolicyBreach && (
+                            <div className="p-4 bg-red-100 border border-red-400 rounded-lg shadow-md">
+                                <h3 className="font-bold text-red-700 mb-2">{t('policyBreachTitle')}</h3>
+                                <p className="text-sm text-red-600 mb-3">{t('policyBreachText')}</p>
+                                <textarea
+                                    value={policyReason}
+                                    onChange={(e) => setPolicyReason(e.target.value)}
+                                    placeholder={t('policyReasonPlaceholder')}
+                                    className="w-full px-3 py-2 border border-red-300 rounded-lg"
+                                    rows="2"
+                                />
+                            </div>
+                        )}
+                    </div>
+                    
+                    {/* العمود الأيمن: الملخص والدفع */}
+                    <div className="lg:col-span-1 space-y-6">
+                        
+                        {/* ملخص السعر والضرائب */}
+                        <div className="bg-gray-100 p-6 rounded-xl shadow-inner">
+                            <h2 className="text-xl font-bold text-gray-800 mb-4">{t('summaryTitle', MOCK_AGENT_INFO.currency)}</h2>
+                            <div className="space-y-2 text-sm">
+                                <div className="flex justify-between"><span>{t('basePrice')}:</span> <span>{bookingDetails.priceDetails.base_price.toFixed(2)}$</span></div>
+                                <div className="flex justify-between"><span>{t('taxes')}:</span> <span>{bookingDetails.priceDetails.tax_amount.toFixed(2)}$</span></div>
+                                <div className="flex justify-between border-b pb-2"><span>{t('markup')}:</span> <span>{bookingDetails.priceDetails.markup_amount.toFixed(2)}$</span></div>
+                                <div className="flex justify-between pt-2 text-lg font-extrabold text-teal-600">
+                                    <span>{t('finalTotal')}:</span> <span>{getFinalPrice()}$</span>
+                                </div>
+                            </div>
+                        </div>
 
-        st.markdown("---")
-        st.subheader("AI Assistant" if st.session_state.lang == "en" else "مساعد الذكاء الاصطناعي")
-        chat_box = st.empty()
-        # Render chat lines
-        with chat_box.container():
-            for c in st.session_state.chat_lines:
-                if c["from"] == "system":
-                    st.markdown(f"<div style='color:gray;font-size:12px'>{c['text']}</div>", unsafe_allow_html=True)
-                elif c["from"] == "user":
-                    st.markdown(f"<div style='text-align:right;background-color:#e6f2ff;padding:6px;border-radius:6px'>{c['text']}</div>", unsafe_allow_html=True)
-                else:
-                    st.markdown(f"<div style='text-align:left;background-color:#f7f7f7;padding:6px;border-radius:6px'>{c['text']}</div>", unsafe_allow_html=True)
+                        {/* خيار العروض الترويجية */}
+                        <div className="bg-white p-4 rounded-xl shadow-md border border-gray-200">
+                            <h3 className="font-semibold text-gray-700 mb-3">{t('promoTitle')}</h3>
+                            <div className="flex">
+                                <input
+                                    type="text"
+                                    value={promoCode}
+                                    onChange={(e) => setPromoCode(e.target.value)}
+                                    placeholder={t('promoPlaceholder')}
+                                    className="flex-1 px-3 py-2 border rounded-l-lg focus:ring-indigo-500"
+                                />
+                                <button
+                                    onClick={applyPromo}
+                                    className="bg-indigo-600 text-white px-4 py-2 rounded-r-lg hover:bg-indigo-700 transition"
+                                >
+                                    {t('apply')}
+                                </button>
+                            </div>
+                        </div>
 
-        user_message = st.text_input("اسأل المساعد..." if st.session_state.lang == "ar" else "Ask the assistant...")
+                        {/* خيارات الدفع */}
+                        <div className="bg-white p-4 rounded-xl shadow-md border border-gray-200">
+                            <h3 className="font-semibold text-gray-700 mb-3">{t('paymentMethod')}</h3>
+                            <div className="space-y-2">
+                                {[
+                                    { id: 'Deposit', label: t('deposit'), balance: MOCK_AGENT_INFO.currentBalance },
+                                    { id: 'Credit Card', label: t('creditCard') },
+                                    { id: 'Debit Card', label: t('debitCard') },
+                                    { id: 'Net Banking', label: t('netBanking') },
+                                ].map(method => (
+                                    <div key={method.id} className="flex items-center">
+                                        <input
+                                            type="radio"
+                                            id={method.id}
+                                            name="payment"
+                                            value={method.id}
+                                            checked={selectedPayment === method.id}
+                                            onChange={(e) => setSelectedPayment(e.target.value)}
+                                            className="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500 ml-2 rtl:mr-2"
+                                        />
+                                        <label htmlFor={method.id} className="text-sm font-medium text-gray-700">
+                                            {method.label}
+                                            {method.id === 'Deposit' && ` (${method.balance}$)`}
+                                        </label>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
 
-        col_send1, col_send2 = st.columns([3, 1])
-        with col_send2:
-            if st.button("أرسل" if st.session_state.lang == "ar" else "Send"):
-                if user_message.strip():
-                    st.session_state.chat_lines.append({"from": "user", "text": user_message})
-                    placeholder = st.empty()
-                    st.session_state.chat_lines.append({"from": "assistant", "text": "..."})
-                    # update display immediately
-                    # streaming experience:
-                    final = ai_reply_stream(user_message, lambda txt: placeholder.markdown(txt))
-                    # replace the assistant placeholder (last) with final
-                    if st.session_state.chat_lines and st.session_state.chat_lines[-1].get("text") == "...":
-                        st.session_state.chat_lines[-1] = {"from": "assistant", "text": final}
-                    else:
-                        st.session_state.chat_lines.append({"from": "assistant", "text": final})
-                    # re-render chat box
-                    chat_box.empty()
-                    with chat_box.container():
-                        for c in st.session_state.chat_lines:
-                            if c["from"] == "system":
-                                st.markdown(f"<div style='color:gray;font-size:12px'>{c['text']}</div>", unsafe_allow_html=True)
-                            elif c["from"] == "user":
-                                st.markdown(f"<div style='text-align:right;background-color:#e6f2ff;padding:6px;border-radius:6px'>{c['text']}</div>", unsafe_allow_html=True)
-                            else:
-                                st.markdown(f"<div style='text-align:left;background-color:#f7f7f7;padding:6px;border-radius:6px'>{c['text']}</div>", unsafe_allow_html=True)
+                        {/* زر تأكيد الحجز */}
+                        <button
+                            onClick={handleConfirmBooking}
+                            className="w-full py-4 bg-indigo-700 text-white text-xl font-bold rounded-xl shadow-2xl hover:bg-indigo-800 transition duration-200"
+                        >
+                            {t('confirmPayment')} ({getFinalPrice()}$)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
-        st.markdown("---")
-        st.write("روابط سريعة" if st.session_state.lang == "ar" else "Quick links")
-        if st.button("تحميل الحزمة الكاملة (ZIP)" if st.session_state.lang == "ar" else "Download full package"):
-            url = get_signed_url("Dara_Investment_Files.zip")
-            st.write(f"[فتح الحزمة]({url})")
-        if st.button("تحميل Master Deck" if st.session_state.lang == "ar" else "Download Master Deck"):
-            url = get_signed_url("Master_Investor_Deck.pptx")
-            st.write(f"[فتح الملف]({url})")
-
-    st.markdown("---")
-    st.caption(f"Prepared with AI • Last updated: {time.strftime('%Y-%m-%d')}")
-
-
-# ---------- CLI / Test mode (when Streamlit is not available) ----------
-else:
-    def _print_header():
-        print("Dara Investor Platform - CLI test mode")
-        print("Streamlit not found in the environment. To run the interactive app, install streamlit and run:")
-        print("  pip install streamlit")
-        print("  streamlit run app.py")
-        print()
-
-    def _cli_consumer(text: str):
-        # simple consumer for ai_reply_stream in CLI test mode
-        # clear the terminal-ish by printing separators
-        print("---- partial reply ----")
-        print(text)
-        print("-----------------------")
-
-    def _run_tests():
-        _print_header()
-        # Test 1: signed URL resolution
-        print("Test: get_signed_url('Master_Investor_Deck.pptx') ->")
-        print(get_signed_url('Master_Investor_Deck.pptx'))
-        print()
-
-        # Test 2: ai_reply_sync with known and unknown prompts
-        print("Test: ai_reply_sync('hello') ->")
-        print(ai_reply_sync('hello'))
-        print()
-        print("Test: ai_reply_sync('something else') ->")
-        print(ai_reply_sync('something else'))
-        print()
-
-        # Test 3: ai_reply_stream (mock streaming)
-        print("Test: ai_reply_stream('summarize master') streaming ->")
-        res = ai_reply_stream('summarize master', _cli_consumer)
-        print("FINAL STREAM RESULT:
-", res)
-        print()
-
-        # Sanity test: ensure projects list exists and is iterable
-        print("Projects loaded:")
-        for p in initial_projects:
-            print(f" - {p['id']}: {p['title']}")
-
-    if __name__ == '__main__':
-        _run_tests()
+export default App;
