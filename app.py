@@ -49,7 +49,7 @@ const translations = {
         errorInvalidPromo: "خطأ: رمز ترويجي غير صالح.",
         errorPolicyReason: "خطأ: يرجى تحديد سبب اختيار رحلة خارج سياسة الشركة.",
         errorInsufficientBalance: "خطأ: رصيدك غير كافٍ لإتمام الحجز! يرجى إعادة الشحن (%1$).",
-        successBooking: "✅ جاري إرسال الحجز (PNR) عبر %1$. سيتم إرسال التذكرة بالبريد الإلكتروني.",
+        successBooking: "تم إرسال الحجز (PNR) عبر %1$. سيتم إرسال التذكرة بالبريد الإلكتروني.",
     },
     EN: {
         title: "Final Booking Review",
@@ -94,7 +94,7 @@ const translations = {
         errorInvalidPromo: "Error: Invalid promo code.",
         errorPolicyReason: "Error: Please specify a reason for choosing an out-of-policy flight.",
         errorInsufficientBalance: "Error: Insufficient balance to complete booking! Please recharge (%1$).",
-        successBooking: "✅ Booking (PNR) processing via %1$. Ticket will be emailed.",
+        successBooking: "Booking (PNR) processing via %1$. Ticket will be emailed.",
     }
 };
 
@@ -214,7 +214,8 @@ const App = () => {
                     final_price: newPrice,
                 },
             }));
-            setMessage(`✅ ${isArabic ? 'تم تطبيق الخصم بنسبة 10%. السعر الجديد هو' : '10% discount applied. New price is'} ${newPrice.toFixed(2)}$`);
+            // تم تعديل الرسالة لإزالة رمز الإيموجي ✅
+            setMessage(`${isArabic ? 'تم تطبيق الخصم بنسبة 10%. السعر الجديد هو' : '10% discount applied. New price is'} ${newPrice.toFixed(2)}$`);
         } else {
             setMessage(t('errorInvalidPromo'));
         }
@@ -406,7 +407,7 @@ const App = () => {
                                 {[
                                     { id: 'Deposit', label: t('deposit'), balance: MOCK_AGENT_INFO.currentBalance },
                                     { id: 'Credit Card', label: t('creditCard') },
-                                    { id: 'Debit Card', label: t('debitCard') },
+                                    { id: 'Debit Card', label: 'بطاقة مدين' },
                                     { id: 'Net Banking', label: t('netBanking') },
                                 ].map(method => (
                                     <div key={method.id} className="flex items-center">
